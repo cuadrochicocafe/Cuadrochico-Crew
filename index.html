@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cuadrochico · Inventario</title>
+<style>
+:root{--bg:#faf6f1;--card:#ffffff;--ink:#2b1d14;--mut:#7a6a5f;--acc:#6b4423;--acc-ink:#ffffff;--line:#e4d9cd;--warn:#b3261e;--warnbg:#fdeceb;--ok:#2e7d32;--okbg:#e8f3e8;--chip:#efe5d9;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1c1511;--card:#271e18;--ink:#f3e9df;--mut:#b5a597;--acc:#d9a66b;--acc-ink:#1c1511;--line:#3b2e25;--warn:#ff8a80;--warnbg:#3a1f1d;--ok:#81c784;--okbg:#1f2e20;--chip:#33271f;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1c1511;--card:#271e18;--ink:#f3e9df;--mut:#b5a597;--acc:#d9a66b;--acc-ink:#1c1511;--line:#3b2e25;--warn:#ff8a80;--warnbg:#3a1f1d;--ok:#81c784;--okbg:#1f2e20;--chip:#33271f;color-scheme:dark}
+*{box-sizing:border-box}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:10}
+.wrap{max-width:720px;margin:0 auto;padding:12px 14px 90px}
+header{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0 10px}
+h1{font-size:19px;margin:0}h2{font-size:16px;margin:18px 0 6px}
+.who{font-size:13px;color:var(--mut)}
+button,select,input,textarea{font:inherit;color:inherit}
+button{border:0;border-radius:10px;padding:10px 14px;background:var(--acc);color:var(--acc-ink);font-weight:600;cursor:pointer}
+button.sec{background:var(--chip);color:var(--ink)}
+button.link{background:none;color:var(--mut);padding:6px;font-weight:500}
+.tabs,.chips{display:flex;gap:8px;margin:6px 0 10px;flex-wrap:wrap}
+.chip{padding:8px 14px;border-radius:999px;background:var(--chip);color:var(--ink);font-weight:600}
+.chip.on{background:var(--acc);color:var(--acc-ink)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin:8px 0}
+.banner{border-radius:12px;padding:10px 12px;margin:8px 0;font-size:14px;background:var(--okbg);color:var(--ok)}
+.banner.warn{background:var(--warnbg);color:var(--warn)}
+.test{background:var(--chip);color:var(--mut);font-size:12px;padding:6px 10px;border-radius:8px;margin:6px 0}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.nm{flex:1;min-width:0}.nm small{display:block;color:var(--mut);font-size:12px}
+.ctl{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.ctl input,.ctl select,textarea,.login input,.login select{border:1px solid var(--line);border-radius:10px;padding:9px 10px;background:var(--bg);font-size:16px}
+.ctl input{width:92px;text-align:right}
+.ml{font-size:12px;color:var(--mut);width:100%;text-align:right}.ml.low{color:var(--warn);font-weight:600}
+.login{display:grid;gap:10px;margin-top:20px}.login input,.login select{width:100%}
+textarea{width:100%;min-height:64px}
+.sticky{position:fixed;left:0;right:0;bottom:0;padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));background:var(--bg);border-top:1px solid var(--line)}
+.sticky button{width:100%;max-width:720px;display:block;margin:0 auto}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:80px;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;z-index:20;max-width:90%}
+.tag{display:inline-block;font-size:11px;background:var(--chip);border-radius:6px;padding:1px 6px;margin-left:4px;color:var(--mut)}
+.mut{color:var(--mut);font-size:13px}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.btns button{flex:1;min-width:130px}.btns button:disabled{opacity:.5}.alt{margin:10px 0}.alt img{max-width:100%;border:1px solid var(--line);border-radius:10px}.alt a{color:var(--acc);font-weight:600}
+@media print{.tabs,.chips,.sticky,header button,.noprint,.toast{display:none!important}body{background:#fff;color:#000}.card{border-color:#999}}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script>
+const EMBED = {"insumos": [{"id": "Leche Entera 1.5 L", "nombre": "Leche Entera 1.5 L", "categoria": "Lácteos", "proveedor": "Alpura", "unidadConteo": "Cartones", "unidadCompra": "Caja", "equivalencia": "1 caja = 6 cartones", "minimo": 12, "ubicacion": "Cocina", "dias": "Martes y Miércoles", "bote": false, "notas": "Los martes se hace el pedido y llega al día siguiente. No hay otro día de pedido.", "area": "Ambos"}, {"id": "Leche Deslactosada 1.5 L", "nombre": "Leche Deslactosada 1.5 L", "categoria": "Lácteos", "proveedor": "Alpura", "unidadConteo": "Cartones", "unidadCompra": "Caja", "equivalencia": "1 caja = 6 cartones", "minimo": 12, "ubicacion": "Cocina", "dias": "Martes y Miércoles", "bote": false, "notas": "Los martes se hace el pedido y llega al día siguiente. No hay otro día de pedido.", "area": "Ambos"}, {"id": "Leche de Avena 1 L", "nombre": "Leche de Avena 1 L", "categoria": "Lácteos", "proveedor": "Califia", "unidadConteo": "Cartones", "unidadCompra": "Caja", "equivalencia": "1 caja = 6 cartones", "minimo": 6, "ubicacion": "Cocina", "dias": "Lunes a Sábado", "bote": false, "notas": "Puedo hacer el pedido cualquier día y me llega al día siguiente.", "area": "Ambos"}, {"id": "Leche de Almendra", "nombre": "Leche de Almendra", "categoria": "Lácteos", "proveedor": "Cuadrochico", "unidadConteo": "Frasco", "unidadCompra": "Frasco", "equivalencia": "1 frasco = 2 litros", "minimo": 1, "ubicacion": "Cocina (refrigerador y frigobar)", "dias": "", "bote": true, "notas": "Se hace en la cocina, se almacena en refri.", "area": "Ambos"}, {"id": "Jugo de Naranja 1 L", "nombre": "Jugo de Naranja 1 L", "categoria": "Jugos", "proveedor": "Costco", "unidadConteo": "Cartones", "unidadCompra": "Paquete", "equivalencia": "1 paquete = 6 cartones", "minimo": 6, "ubicacion": "Cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "Compra en Costco al día siguiente de llenar el inventario", "area": "Ambos"}, {"id": "Jugo de Granada 1 L", "nombre": "Jugo de Granada 1 L", "categoria": "Jugos", "proveedor": "Costco", "unidadConteo": "Botella", "unidadCompra": "Paquete", "equivalencia": "1 paquete = 4 botellas", "minimo": 4, "ubicacion": "Cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "Compra en Costco al día siguiente de llenar el inventario", "area": "Ambos"}, {"id": "Miel de Abeja", "nombre": "Miel de Abeja", "categoria": "Jarabes y salsas", "proveedor": "Costco", "unidadConteo": "Botella", "unidadCompra": "Botella", "equivalencia": "1 botella = 1 botella", "minimo": 1, "ubicacion": "Cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "Compra en Costco al día siguiente de llenar el inventario", "area": "Ambos"}, {"id": "Miel de Agave", "nombre": "Miel de Agave", "categoria": "Jarabes y salsas", "proveedor": "Mercado Libre", "unidadConteo": "Litros", "unidadCompra": "Bidón", "equivalencia": "1 bidón = 25 litros", "minimo": 4, "ubicacion": "Cocina", "dias": "Mensual", "bote": false, "notas": "Compra al día en que se entregue el inventario", "area": "Ambos"}, {"id": "Papas Fritas", "nombre": "Papas Fritas", "categoria": "Alimentos", "proveedor": "Costco", "unidadConteo": "Paquete", "unidadCompra": "Paquete", "equivalencia": "1 paquete = 1 paquete", "minimo": 1, "ubicacion": "Cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "Compra en Costco al día siguiente de llenar el inventario", "area": "Ambos"}, {"id": "Vainilla", "nombre": "Vainilla", "categoria": "Especias", "proveedor": "Costco", "unidadConteo": "Cilindro", "unidadCompra": "Cilindro", "equivalencia": "1 cilindro = 20 piezas", "minimo": 1, "ubicacion": "Cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "Compra en Costco al día siguiente de llenar el inventario", "area": "Cocina"}, {"id": "Cocoa", "nombre": "Cocoa", "categoria": "Alimentos", "proveedor": "Costco", "unidadConteo": "Gramos", "unidadCompra": "Bolsa", "equivalencia": "1 bolsa = 1000 gramos", "minimo": 1000, "ubicacion": "Rack de cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "Compra en Costco al día siguiente de llenar el inventario", "area": "Cocina"}, {"id": "Flor de Jamaica", "nombre": "Flor de Jamaica", "categoria": "Alimentos", "proveedor": "Costco", "unidadConteo": "Gramos", "unidadCompra": "Bolsa", "equivalencia": "1 bolsa = 500 gramos", "minimo": 100, "ubicacion": "Rack de cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "Compra en Costco al día siguiente de llenar el inventario", "area": "Cocina"}, {"id": "Almendra", "nombre": "Almendra", "categoria": "Alimentos", "proveedor": "Costco", "unidadConteo": "Gramos", "unidadCompra": "Bolsa", "equivalencia": "1 bolsa = 1300 gramos", "minimo": 2000, "ubicacion": "Rack de cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "Compra en Costco al día siguiente de llenar el inventario", "area": "Cocina"}, {"id": "Mayonesa", "nombre": "Mayonesa", "categoria": "Alimentos", "proveedor": "Costco", "unidadConteo": "Gramos", "unidadCompra": "Bote", "equivalencia": "1 bote = 3700 gramos", "minimo": 1000, "ubicacion": "Rack de cocina", "dias": "Jueves o Viernes", "bote": true, "notas": "Compra en Costco al día siguiente de llenar el inventario", "area": "Cocina"}, {"id": "Ajo en polvo", "nombre": "Ajo en polvo", "categoria": "Secos (Polvos o Granel)", "proveedor": "Mercado", "unidadConteo": "Gramos", "unidadCompra": "Granel", "equivalencia": "1 kilogramo = 1000 gramos", "minimo": 100, "ubicacion": "Rack de cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "Compra en mercado al día siguiente de llenar el inventario", "area": "Cocina"}, {"id": "Cebolla en polvo", "nombre": "Cebolla en polvo", "categoria": "Secos (Polvos o Granel)", "proveedor": "Mercado", "unidadConteo": "Gramos", "unidadCompra": "Granel", "equivalencia": "1 kilogramo = 1000 gramos", "minimo": 100, "ubicacion": "Rack de cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "Compra en mercado al día siguiente de llenar el inventario", "area": "Cocina"}, {"id": "Canela en polvo", "nombre": "Canela en polvo", "categoria": "Especias", "proveedor": "Costco", "unidadConteo": "gramos", "unidadCompra": "Bote", "equivalencia": "1 bote = 300 gramos", "minimo": 300, "ubicacion": "Rack de cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "Pedido con proveedor", "area": "Ambos"}, {"id": "Sal", "nombre": "Sal", "categoria": "Secos (Polvos o Granel)", "proveedor": "Caver", "unidadConteo": "Gramos", "unidadCompra": "Bolsa", "equivalencia": "1 bolsa = 1 kilogramo", "minimo": 1000, "ubicacion": "Rack de cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "Pedido con proveedor", "area": "Cocina"}, {"id": "Azúcar", "nombre": "Azúcar", "categoria": "Secos (Polvos o Granel)", "proveedor": "Costco", "unidadConteo": "Octavos del recipiente (1 a 8)", "unidadCompra": "Bolsa", "equivalencia": "1 bolsa = 25 kilogramos", "minimo": 1, "ubicacion": "Depósito", "dias": "Jueves o Viernes", "bote": false, "notas": "Recipiente de 50 kg; mínimo = 1 octavo (unos 6.25 kg). Mínimo anterior: 4 kg.", "area": "Cocina"}, {"id": "Azúcar Morena", "nombre": "Azúcar Morena", "categoria": "Secos (Polvos o Granel)", "proveedor": "Costco", "unidadConteo": "Gramos", "unidadCompra": "Bolsa", "equivalencia": "1 bolsa = 2000 gramos", "minimo": 1000, "ubicacion": "Rack de cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "Compra en Costco al día siguiente de llenar el inventario", "area": "Cocina"}, {"id": "Ácido Cítrico", "nombre": "Ácido Cítrico", "categoria": "Secos (Polvos o Granel)", "proveedor": "Mercado Libre", "unidadConteo": "Gramos", "unidadCompra": "Bolsa", "equivalencia": "1 Bolsa = 1 kilogramo", "minimo": 100, "ubicacion": "Rack de cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "Pedido en Mercadolibre", "area": "Cocina"}, {"id": "Ácido Málico", "nombre": "Ácido Málico", "categoria": "Secos (Polvos o Granel)", "proveedor": "Mercado Libre", "unidadConteo": "Gramos", "unidadCompra": "Bolsa", "equivalencia": "1 Bolsa = 1 kilogramo", "minimo": 100, "ubicacion": "Rack de cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "Pedido en Mercadolibre", "area": "Cocina"}, {"id": "Goma Xantana", "nombre": "Goma Xantana", "categoria": "Secos (Polvos o Granel)", "proveedor": "Mercado Libre", "unidadConteo": "Gramos", "unidadCompra": "Bolsa", "equivalencia": "1 Bolsa = 1 kilogramo", "minimo": 100, "ubicacion": "Rack de cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "Pedido en Mercadolibre", "area": "Cocina"}, {"id": "Vasos 12 oz", "nombre": "Vasos 12 oz", "categoria": "Desechables", "proveedor": "Econserve", "unidadConteo": "Paquetes de 50", "unidadCompra": "Paquete", "equivalencia": "1 Paquete = 50 vasos", "minimo": 6, "ubicacion": "Bodega y Cocina", "dias": "Cada mes, libre", "bote": false, "notas": "Pedido en Econserve, tarda 5 a 10 días hábiles en llegar. Mínimo propuesto: cubre unas 2 semanas de consumo según los conteos de bodega; revisar tras unas semanas.", "area": "Ambos"}, {"id": "Tapas 12 oz", "nombre": "Tapas 12 oz", "categoria": "Desechables", "proveedor": "Econserve", "unidadConteo": "Paquetes de 50", "unidadCompra": "Paquete", "equivalencia": "1 paquete = 50 tapas", "minimo": 8, "ubicacion": "Bodega y Cocina", "dias": "Cada mes, libre", "bote": false, "notas": "Pedido en Econserve, tarda 5 a 10 días hábiles en llegar. Mínimo propuesto: cubre unas 2 semanas de consumo según los conteos de bodega; revisar tras unas semanas.", "area": "Ambos"}, {"id": "Vasos 8 oz", "nombre": "Vasos 8 oz", "categoria": "Desechables", "proveedor": "Econserve", "unidadConteo": "Paquetes de 50", "unidadCompra": "Paquete", "equivalencia": "1 Paquete = 50 vasos", "minimo": 4, "ubicacion": "Bodega y Cocina", "dias": "Cada mes, libre", "bote": false, "notas": "Pedido en Econserve, tarda 5 a 10 días hábiles en llegar. Mínimo propuesto: cubre unas 2 semanas de consumo según los conteos de bodega; revisar tras unas semanas.", "area": "Ambos"}, {"id": "Tapas 8 oz", "nombre": "Tapas 8 oz", "categoria": "Desechables", "proveedor": "Econserve", "unidadConteo": "Paquetes de 50", "unidadCompra": "Paquete", "equivalencia": "1 paquete = 50 tapas", "minimo": 5, "ubicacion": "Bodega y Cocina", "dias": "Cada mes, libre", "bote": false, "notas": "Pedido en Econserve, tarda 5 a 10 días hábiles en llegar. Mínimo propuesto: cubre unas 2 semanas de consumo según los conteos de bodega; revisar tras unas semanas.", "area": "Ambos"}, {"id": "Portavasos", "nombre": "Portavasos", "categoria": "Desechables", "proveedor": "Econserve", "unidadConteo": "Piezas", "unidadCompra": "Paquete", "equivalencia": "1 paquete = 50 portavasos", "minimo": 10, "ubicacion": "Bodega y Cocina", "dias": "Cada mes, libre", "bote": false, "notas": "Pedido en Econserve, tarda 5 a 10 días hábiles en llegar.", "area": "Ambos"}, {"id": "Bolsas de galletas", "nombre": "Bolsas de galletas", "categoria": "Desechables", "proveedor": "Bolsas y Artefactos", "unidadConteo": "Paquetes de 500", "unidadCompra": "Paquete", "equivalencia": "1 paquete = 500", "minimo": 0.5, "ubicacion": "Bodega y Cocina", "dias": "Cada mes, libre", "bote": false, "notas": "Pedido entre semana a proveedor, llega el mismo dia.", "area": "Ambos"}, {"id": "Bolsas kraft", "nombre": "Bolsas kraft", "categoria": "Desechables", "proveedor": "Bolsas y Artefactos", "unidadConteo": "Paquetes de 500", "unidadCompra": "Paquete", "equivalencia": "1 paquete = 500", "minimo": 0.5, "ubicacion": "Bodega y Cocina", "dias": "Cada mes, libre", "bote": false, "notas": "Pedido entre semana a proveedor, llega el mismo dia.", "area": "Ambos"}, {"id": "Mangas", "nombre": "Mangas", "categoria": "Desechables", "proveedor": "Econserve", "unidadConteo": "Paquetes de 50", "unidadCompra": "Paquete", "equivalencia": "1 paquete = 50 mangas", "minimo": 0.5, "ubicacion": "Bodega", "dias": "Cada mes, libre", "bote": false, "notas": "Pedido en Econserve, tarda 5 a 10 días hábiles en llegar.", "area": "Ambos"}, {"id": "Charolas para sándwich", "nombre": "Charolas para sándwich", "categoria": "Desechables", "proveedor": "Econserve", "unidadConteo": "Paquetes de 50", "unidadCompra": "Paquete", "equivalencia": "1 paquete = 50 charolas", "minimo": 0.5, "ubicacion": "Cocina", "dias": "Cada mes, libre", "bote": false, "notas": "Pedido en Econserve, tarda 5 a 10 días hábiles en llegar.", "area": "Cocina"}, {"id": "Servilletas", "nombre": "Servilletas", "categoria": "Desechables", "proveedor": "Costco", "unidadConteo": "Paquetes", "unidadCompra": "Caja", "equivalencia": "1 caja = 12 paquetes", "minimo": 6, "ubicacion": "Bodega y Cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "Compra en Costco al día siguiente de llenar el inventario", "area": "Ambos"}, {"id": "Agitadores", "nombre": "Agitadores", "categoria": "Desechables", "proveedor": "Econserve", "unidadConteo": "Paquetes de 100", "unidadCompra": "Paquete", "equivalencia": "1 paquete = 100 agitadores", "minimo": 0.5, "ubicacion": "Bodega", "dias": "Cada mes, libre", "bote": false, "notas": "Pedido en Econserve, tarda 5 a 10 días hábiles en llegar.", "area": "Cafetería"}, {"id": "Rollos para terminal", "nombre": "Rollos para terminal", "categoria": "Desechables", "proveedor": "Mercado Libre", "unidadConteo": "Rollos", "unidadCompra": "", "equivalencia": "", "minimo": null, "ubicacion": "", "dias": "", "bote": false, "notas": "", "area": "Cafetería"}, {"id": "Rollos para comandas", "nombre": "Rollos para comandas", "categoria": "Desechables", "proveedor": "Mercado Libre", "unidadConteo": "Rollos", "unidadCompra": "", "equivalencia": "", "minimo": null, "ubicacion": "", "dias": "", "bote": false, "notas": "", "area": "Cafetería"}, {"id": "Rollos blancos para superficies", "nombre": "Rollos blancos para superficies", "categoria": "Limpieza", "proveedor": "Costco", "unidadConteo": "Rollos", "unidadCompra": "Paquete", "equivalencia": "1 Paquete = 12 rollos", "minimo": 6, "ubicacion": "Cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "Compra en Costco al día siguiente de llenar el inventario", "area": "Cocina"}, {"id": "Rollos azules para superficies", "nombre": "Rollos azules para superficies", "categoria": "Limpieza", "proveedor": "Costco", "unidadConteo": "Rollos", "unidadCompra": "Paquete", "equivalencia": "1 Paquete = 12 rollos", "minimo": 6, "ubicacion": "Cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "Compra en Costco al día siguiente de llenar el inventario", "area": "Cocina"}, {"id": "Sanitas (papel de manos)", "nombre": "Sanitas (papel de manos)", "categoria": "Limpieza", "proveedor": "Costco", "unidadConteo": "Piezas", "unidadCompra": "Paquete", "equivalencia": "1 Paquete = 8 piezas", "minimo": 4, "ubicacion": "Cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "Compra en Costco al día siguiente de llenar el inventario", "area": "Cocina"}, {"id": "Papel higiénico", "nombre": "Papel higiénico", "categoria": "Limpieza", "proveedor": "Costco", "unidadConteo": "Rollos", "unidadCompra": "Paquete", "equivalencia": "1 paquete = 24 rollos", "minimo": 12, "ubicacion": "Cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "Compra en Costco al día siguiente de llenar el inventario", "area": "Cocina"}, {"id": "Bolsas de basura blancas", "nombre": "Bolsas de basura blancas", "categoria": "Limpieza", "proveedor": "Costco", "unidadConteo": "Cajas", "unidadCompra": "Caja", "equivalencia": "1 caja = 200 bolsas", "minimo": 0.5, "ubicacion": "Cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "Compra en Costco al día siguiente de llenar el inventario", "area": "Ambos"}, {"id": "Bolsas de basura negras", "nombre": "Bolsas de basura negras", "categoria": "Limpieza", "proveedor": "Costco", "unidadConteo": "Cajas", "unidadCompra": "Caja", "equivalencia": "1 caja = 200 bolsas", "minimo": 0.5, "ubicacion": "Cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "Compra en Costco al día siguiente de llenar el inventario", "area": "Cocina"}, {"id": "Esponjas", "nombre": "Esponjas", "categoria": "Limpieza", "proveedor": "Costco", "unidadConteo": "Unidades", "unidadCompra": "Caja", "equivalencia": "1 caja = 12 unidades", "minimo": 6, "ubicacion": "Cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "Compra en Costco al día siguiente de llenar el inventario", "area": "Cocina"}, {"id": "Limpiador de manos", "nombre": "Limpiador de manos", "categoria": "Limpieza", "proveedor": "Costco", "unidadConteo": "Litros", "unidadCompra": "Bolsa", "equivalencia": "1 bolsa = 1 litro", "minimo": 1, "ubicacion": "Cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "Compra en Costco al día siguiente de llenar el inventario", "area": "Ambos"}, {"id": "Limpiador de trastes", "nombre": "Limpiador de trastes", "categoria": "Limpieza", "proveedor": "Costco", "unidadConteo": "Litros", "unidadCompra": "Bote", "equivalencia": "1 bote = 2 litros", "minimo": 1, "ubicacion": "Cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "Compra en Costco al día siguiente de llenar el inventario", "area": "Ambos"}, {"id": "Pinol", "nombre": "Pinol", "categoria": "Limpieza", "proveedor": "Costco", "unidadConteo": "Litros", "unidadCompra": "Bote", "equivalencia": "1 bote = 10 litros", "minimo": 0.5, "ubicacion": "Bodega y Cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "Compra en Costco al día siguiente de llenar el inventario", "area": "Ambos"}, {"id": "Cloralex", "nombre": "Cloralex", "categoria": "Limpieza", "proveedor": "Costco", "unidadConteo": "Litros", "unidadCompra": "Bote", "equivalencia": "1 bote = 1 litros", "minimo": 0.5, "ubicacion": "Bodega y Cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "Compra en Costco al día siguiente de llenar el inventario", "area": "Ambos"}, {"id": "Harpic", "nombre": "Harpic", "categoria": "Limpieza", "proveedor": "Costco", "unidadConteo": "Litros", "unidadCompra": "Bote", "equivalencia": "1 bote = 1 litros", "minimo": 0.5, "ubicacion": "Bodega y Cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "Compra en Costco al día siguiente de llenar el inventario", "area": "Ambos"}, {"id": "Windex", "nombre": "Windex", "categoria": "Limpieza", "proveedor": "Costco", "unidadConteo": "Litros", "unidadCompra": "Bote", "equivalencia": "1 bote = 1 litros", "minimo": 0.5, "ubicacion": "Bodega y Cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "Compra en Costco al día siguiente de llenar el inventario", "area": "Ambos"}, {"id": "Lysol superficies (verde)", "nombre": "Lysol superficies (verde)", "categoria": "Limpieza", "proveedor": "Costco", "unidadConteo": "Litros", "unidadCompra": "Bote", "equivalencia": "1 bote = 3,7 litros", "minimo": 0.5, "ubicacion": "Cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "Compra en Costco al día siguiente de llenar el inventario", "area": "Cocina"}, {"id": "Aromatizantes", "nombre": "Aromatizantes", "categoria": "Limpieza", "proveedor": "Costco", "unidadConteo": "Botes", "unidadCompra": "Caja", "equivalencia": "1 caja = 4 botes", "minimo": 1, "ubicacion": "Cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "Compra en Costco al día siguiente de llenar el inventario", "area": "Cocina"}, {"id": "Splenda", "nombre": "Splenda", "categoria": "Alimentos", "proveedor": "Costco", "unidadConteo": "Cajas", "unidadCompra": "Caja", "equivalencia": "1 caja = 1000 unidades", "minimo": 0.25, "ubicacion": "Bodega y Cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "Compra en Costco al día siguiente de llenar el inventario", "area": "Ambos"}, {"id": "Svetia", "nombre": "Svetia", "categoria": "Alimentos", "proveedor": "Costco", "unidadConteo": "Cajas", "unidadCompra": "Caja", "equivalencia": "1 caja = 1000 unidades", "minimo": 0.25, "ubicacion": "Bodega y Cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "Compra en Costco al día siguiente de llenar el inventario", "area": "Ambos"}, {"id": "Crema batida", "nombre": "Crema batida", "categoria": "Lácteos", "proveedor": "Alpura", "unidadConteo": "Litros", "unidadCompra": "Litro", "equivalencia": "1 litro = 1 litro", "minimo": 1, "ubicacion": "Cocina", "dias": "Martes/Miércoles", "bote": false, "notas": "Pedido en Alpura", "area": "Cocina"}, {"id": "Mix de quesos", "nombre": "Mix de quesos", "categoria": "Alimentos", "proveedor": "Costco", "unidadConteo": "Unidades", "unidadCompra": "Bolsas", "equivalencia": "2 bolsas = 1 unidad", "minimo": 0, "ubicacion": "Cocina", "dias": "Jueves o Viernes", "bote": true, "notas": "Se compra en Costco y se deja listo en bote en cocina.", "area": "Cocina"}, {"id": "Queso mozzarella", "nombre": "Queso mozzarella", "categoria": "Alimentos", "proveedor": "Costco", "unidadConteo": "Unidades", "unidadCompra": "Bolsa", "equivalencia": "1 Bolsa = 1 unidad", "minimo": 0, "ubicacion": "Cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "", "area": "Cocina"}, {"id": "Pesto", "nombre": "Pesto", "categoria": "Alimentos", "proveedor": "Costco", "unidadConteo": "Botes", "unidadCompra": "Bote", "equivalencia": "1 Bote = 1 bote", "minimo": 1, "ubicacion": "Cocina", "dias": "Jueves o Viernes", "bote": true, "notas": "Se compra en Costco y se deja listo en bote en cocina.", "area": "Cocina"}, {"id": "Jamón de pavo", "nombre": "Jamón de pavo", "categoria": "Alimentos", "proveedor": "Costco", "unidadConteo": "Unidades", "unidadCompra": "Paquete", "equivalencia": "1 paquete = 2 unidades", "minimo": 2, "ubicacion": "Refrigerador de cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "Marca en el Forms: Kirkland.", "area": "Cocina"}, {"id": "Jamón serrano", "nombre": "Jamón serrano", "categoria": "Alimentos", "proveedor": "Costco", "unidadConteo": "Unidades", "unidadCompra": "Paquete", "equivalencia": "1 paquete = 2 unidades", "minimo": 2, "ubicacion": "Refrigerador de cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "Marca en el Forms: Costa Brava.", "area": "Cocina"}, {"id": "Mix de carnes", "nombre": "Mix de carnes", "categoria": "Alimentos", "proveedor": "Costco", "unidadConteo": "Unidades", "unidadCompra": "Paquete", "equivalencia": "1 paquete = 1 unidades", "minimo": 2, "ubicacion": "Congelador de cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "Marca en el Forms: Citterio.", "area": "Cocina"}, {"id": "Pan de barra", "nombre": "Pan de barra", "categoria": "Alimentos", "proveedor": "Pan de pan", "unidadConteo": "Unidades", "unidadCompra": "Unidades", "equivalencia": "1 Unidad = 1 unidad", "minimo": 1, "ubicacion": "Congelador de cocina", "dias": "2 dias posterior al  pedido", "bote": false, "notas": "Marca en el Forms: Pan de pan.", "area": "Cocina"}, {"id": "Espinaca", "nombre": "Espinaca", "categoria": "Frutas y verduras", "proveedor": "Costco", "unidadConteo": "Unidades", "unidadCompra": "Unidades", "equivalencia": "1 Unidad = 1 unidad", "minimo": 1, "ubicacion": "Refrigerador de cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "", "area": "Cocina"}, {"id": "Limones", "nombre": "Limones", "categoria": "Frutas y verduras", "proveedor": "Costco", "unidadConteo": "Unidades", "unidadCompra": "Bolsa", "equivalencia": "1 bolsa = 10 unidades", "minimo": 6, "ubicacion": "Refrigerador de cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "", "area": "Cocina"}, {"id": "Fresa o blueberry congelada", "nombre": "Fresa o blueberry congelada", "categoria": "Frutas y verduras", "proveedor": "Costco", "unidadConteo": "Gramos", "unidadCompra": "Bolsa", "equivalencia": "1 bolsa = 2000 gramos", "minimo": 500, "ubicacion": "Congelador de cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "", "area": "Cocina"}, {"id": "Café en grano para tolva", "nombre": "Café en grano para tolva", "categoria": "Café", "proveedor": "Avenamar", "unidadConteo": "Gramos", "unidadCompra": "Caja", "equivalencia": "1 caja = 15000 gramos", "minimo": 15000, "ubicacion": "Cocina", "dias": "Mensual", "bote": false, "notas": "Marca en el Forms: Avenamar.", "area": "Cocina"}, {"id": "Café en grano decaf", "nombre": "Café en grano decaf", "categoria": "Café", "proveedor": "Unamuno", "unidadConteo": "Gramos", "unidadCompra": "Bolsa", "equivalencia": "1 bolsa = 1000 gramos", "minimo": 100, "ubicacion": "Barra", "dias": "2 días posterior al pedido", "bote": false, "notas": "Marca en el Forms: Unamuno.", "area": "Cafetería"}, {"id": "Café en grano para cold brew", "nombre": "Café en grano para cold brew", "categoria": "Café", "proveedor": "Unamuno", "unidadConteo": "Gramos", "unidadCompra": "Bolsa", "equivalencia": "1 bolsa = 1000 gramos", "minimo": 1000, "ubicacion": "Barra", "dias": "2 días posterior al pedido", "bote": false, "notas": "Marca en el Forms: Unamuno.", "area": "Cafetería"}, {"id": "Matcha", "nombre": "Matcha", "categoria": "Té y matcha", "proveedor": "Chazen", "unidadConteo": "Bolsas", "unidadCompra": "Bolsa", "equivalencia": "1 bolsa = 100 gramos", "minimo": 1, "ubicacion": "Cocina", "dias": "2 días posterior al pedido", "bote": false, "notas": "", "area": "Cocina"}, {"id": "Kashmir Chai", "nombre": "Kashmir Chai", "categoria": "Té y matcha", "proveedor": "Hindie", "unidadConteo": "Gramos", "unidadCompra": "Bolsa", "equivalencia": "1 bolsa = 250 gramos", "minimo": 125, "ubicacion": "Barra y Cocina", "dias": "1 semana posterior al pedido", "bote": false, "notas": "", "area": "Ambos"}, {"id": "Sensei", "nombre": "Sensei", "categoria": "Té y matcha", "proveedor": "Hindie", "unidadConteo": "Gramos", "unidadCompra": "Bolsa", "equivalencia": "1 bolsa = 250 gramos", "minimo": 125, "ubicacion": "Barra y Cocina", "dias": "1 semana posterior al pedido", "bote": false, "notas": "Es té", "area": "Ambos"}, {"id": "Oolong", "nombre": "Oolong", "categoria": "Té y matcha", "proveedor": "Hindie", "unidadConteo": "Gramos", "unidadCompra": "Bolsa", "equivalencia": "1 bolsa = 250 gramos", "minimo": 125, "ubicacion": "Barra y Cocina", "dias": "1 semana posterior al pedido", "bote": false, "notas": "", "area": "Ambos"}, {"id": "Canela en vara", "nombre": "Canela en vara", "categoria": "Especias", "proveedor": "Costco", "unidadConteo": "Gramos", "unidadCompra": "Bote", "equivalencia": "1 bote = 300 gramos", "minimo": 150, "ubicacion": "Barra y Cocina", "dias": "Jueves o Viernes", "bote": false, "notas": "", "area": "Ambos"}, {"id": "Lecitina de soya", "nombre": "Lecitina de soya", "categoria": "Secos (Polvos o Granel)", "proveedor": "Mercado Libre", "unidadConteo": "Gramos", "unidadCompra": "Bolsa", "equivalencia": "1 bolsa = 1 kilogramo", "minimo": 500, "ubicacion": "Cocina", "dias": "Cada mes, libre", "bote": false, "notas": "", "area": "Cocina"}], "prep": [{"id": "Vanilla", "nombre": "Vanilla", "envase": "Botellón", "capacidad": 2000, "origen": "Se prepara en cocina", "comoSeCuenta": "Peso", "tara": 760, "minimo": 500, "area": "Ambos", "temporada": false, "insumoOrigen": ""}, {"id": "Caramelo", "nombre": "Caramelo", "envase": "Botellón", "capacidad": 2000, "origen": "Se prepara en cocina", "comoSeCuenta": "Peso", "tara": 760, "minimo": 500, "area": "Ambos", "temporada": false, "insumoOrigen": ""}, {"id": "Canela", "nombre": "Canela", "envase": "Botellón", "capacidad": 2000, "origen": "Se prepara en cocina", "comoSeCuenta": "Peso", "tara": 760, "minimo": 500, "area": "Ambos", "temporada": false, "insumoOrigen": ""}, {"id": "Chocolate", "nombre": "Chocolate", "envase": "Botellón", "capacidad": 2000, "origen": "Se prepara en cocina", "comoSeCuenta": "Peso", "tara": 760, "minimo": 500, "area": "Ambos", "temporada": false, "insumoOrigen": ""}, {"id": "Cinnamon Banana", "nombre": "Cinnamon Banana", "envase": "Botellón", "capacidad": 2000, "origen": "Se prepara en cocina", "comoSeCuenta": "Peso", "tara": 760, "minimo": 500, "area": "Ambos", "temporada": false, "insumoOrigen": ""}, {"id": "Strawberry/Blueberry", "nombre": "Strawberry/Blueberry", "envase": "Botellón", "capacidad": 2000, "origen": "Se prepara en cocina", "comoSeCuenta": "Peso", "tara": 760, "minimo": 500, "area": "Ambos", "temporada": false, "insumoOrigen": ""}, {"id": "Concentrado de Limón", "nombre": "Concentrado de Limón", "envase": "Botellón", "capacidad": 2000, "origen": "Se prepara en cocina", "comoSeCuenta": "Peso", "tara": 760, "minimo": 500, "area": "Ambos", "temporada": false, "insumoOrigen": ""}, {"id": "Concentrado de Jamaica", "nombre": "Concentrado de Jamaica", "envase": "Botellón", "capacidad": 2000, "origen": "Se prepara en cocina", "comoSeCuenta": "Peso", "tara": 760, "minimo": 500, "area": "Ambos", "temporada": false, "insumoOrigen": ""}, {"id": "Concentrado de Tónica", "nombre": "Concentrado de Tónica", "envase": "Botellón", "capacidad": 2000, "origen": "Se prepara en cocina", "comoSeCuenta": "Peso", "tara": 760, "minimo": 500, "area": "Ambos", "temporada": false, "insumoOrigen": ""}, {"id": "Leche de Almendra", "nombre": "Leche de Almendra", "envase": "Botellón", "capacidad": 2000, "origen": "Bote listo desde insumo", "comoSeCuenta": "Botellas + nivel de la abierta", "tara": null, "minimo": 500, "area": "Ambos", "temporada": false, "insumoOrigen": "Leche de Almendra"}, {"id": "Coldbrew", "nombre": "Coldbrew", "envase": "Botellón", "capacidad": 2000, "origen": "Se prepara en cocina", "comoSeCuenta": "Botellas + nivel de la abierta", "tara": null, "minimo": 500, "area": "Ambos", "temporada": false, "insumoOrigen": ""}, {"id": "Aderezo de Pesto", "nombre": "Aderezo de Pesto", "envase": "Botella", "capacidad": 1200, "origen": "Bote listo desde insumo", "comoSeCuenta": "Botellas + nivel de la abierta", "tara": null, "minimo": 500, "area": "Cocina", "temporada": false, "insumoOrigen": "Pesto"}, {"id": "Mayonesa", "nombre": "Mayonesa", "envase": "Botella", "capacidad": 1000, "origen": "Bote listo desde insumo", "comoSeCuenta": "Botellas + nivel de la abierta", "tara": null, "minimo": 500, "area": "Cocina", "temporada": false, "insumoOrigen": "Mayonesa"}, {"id": "Caja de Platano preparado", "nombre": "Caja de Platano preparado", "envase": "Botellón", "capacidad": 2000, "origen": "Se prepara en cocina", "comoSeCuenta": "Peso", "tara": 760, "minimo": 500, "area": "Cocina", "temporada": false, "insumoOrigen": ""}, {"id": "Otoño: Cordial de Uva", "nombre": "Otoño: Cordial de Uva", "envase": "Botellón", "capacidad": 2000, "origen": "Se prepara en cocina", "comoSeCuenta": "Peso", "tara": 760, "minimo": 500, "area": "Ambos", "temporada": true, "insumoOrigen": ""}, {"id": "Otoño: Jarabe e Yerbaniz", "nombre": "Otoño: Jarabe e Yerbaniz", "envase": "Botellón", "capacidad": 2000, "origen": "Se prepara en cocina", "comoSeCuenta": "Peso", "tara": 760, "minimo": 500, "area": "Ambos", "temporada": true, "insumoOrigen": ""}, {"id": "Otoño: Jarabe de Nuez", "nombre": "Otoño: Jarabe de Nuez", "envase": "Botellón", "capacidad": 2000, "origen": "Se prepara en cocina", "comoSeCuenta": "Peso", "tara": 760, "minimo": 500, "area": "Ambos", "temporada": true, "insumoOrigen": ""}, {"id": "Otoño: Jarabe de NPSpice", "nombre": "Otoño: Jarabe de NPSpice", "envase": "Botellón", "capacidad": 2000, "origen": "Se prepara en cocina", "comoSeCuenta": "Peso", "tara": 760, "minimo": 500, "area": "Ambos", "temporada": true, "insumoOrigen": ""}, {"id": "Otoño: Coldfoam de NPSpice", "nombre": "Otoño: Coldfoam de NPSpice", "envase": "Botella", "capacidad": 1200, "origen": "Se prepara en cocina", "comoSeCuenta": "Botellas + nivel de la abierta", "tara": null, "minimo": 500, "area": "Ambos", "temporada": true, "insumoOrigen": ""}, {"id": "Mix de quesos", "nombre": "Mix de quesos", "envase": "Caja", "capacidad": 6000, "origen": "Bote listo desde insumo", "comoSeCuenta": "Botellas + nivel de la abierta", "tara": null, "minimo": null, "area": "Cocina", "temporada": false, "insumoOrigen": "Mix de quesos"}], "cfg": {"densidad": 1}};
+const GAS = typeof google !== 'undefined' && google.script && google.script.run;
+const AREAS = ['Cocina','Cafetería'];
+// Hoja publicada en la web (solo para la versión de GitHub). Pega aquí el gid de cada pestaña.
+const CSV = {base: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRsojjkMzinSj--7LRmYKh19NnFMWJtvc69zF3458W2TbGC6MmIWlf-S_HXi8p43Q/pub', gidInsumos: '609212636', gidPrep: '215775454'};
+
+//LOGIC-START
+const Logic = {
+  num(x){ if (x === '' || x === null || x === undefined) return null; const n = Number(String(x).replace(',', '.')); return isNaN(n) ? null : n; },
+  areaEval(area){ return (area === 'Cocina' || area === 'Ambos') ? 'Cocina' : 'Cafetería'; },
+  enArea(itemArea, sel){ return itemArea === sel || itemArea === 'Ambos'; },
+  calcMl(p, v, cfg){
+    if (p.comoSeCuenta === 'Peso') {
+      const peso = Logic.num(v.a); if (peso === null) return null;
+      return Math.max(0, (peso - (p.tara || 0)) / ((cfg && cfg.densidad) || 1));
+    }
+    const e = Logic.num(v.a), n = Logic.num(v.b);
+    if (e === null && n === null) return null;
+    return ((e || 0) + (n || 0)) * (p.capacidad || 0);
+  },
+  buscar(ultimos, tipo, id, area){ return (ultimos || []).find(u => u.tipo === tipo && u.id === id && u.area === area) || null; },
+  compras(cat, ultimos){
+    const out = {comprar: [], preparar: [], sinMinimo: [], sinConteo: []};
+    for (const i of cat.insumos) {
+      if (i.minimo === null || i.minimo === undefined) { out.sinMinimo.push(i.nombre); continue; }
+      const area = Logic.areaEval(i.area), u = Logic.buscar(ultimos, 'insumo', i.id, area);
+      if (!u) { out.sinConteo.push(i.nombre); continue; }
+      if (u.valor <= i.minimo) out.comprar.push({item: i, valor: u.valor, area: area, ts: u.ts});
+    }
+    for (const p of cat.prep) {
+      if (p.minimo === null || p.minimo === undefined) { out.sinMinimo.push(p.nombre + ' (preparación)'); continue; }
+      const area = Logic.areaEval(p.area), u = Logic.buscar(ultimos, 'prep', p.id, area);
+      if (!u) { out.sinConteo.push(p.nombre + ' (preparación)'); continue; }
+      if (u.ml <= p.minimo) out.preparar.push({item: p, ml: u.ml, area: area, ts: u.ts});
+    }
+    return out;
+  },
+  porProveedor(lista){
+    const m = {};
+    lista.forEach(x => { const k = x.item.proveedor || 'Sin proveedor'; (m[k] = m[k] || []).push(x); });
+    return Object.keys(m).sort().map(k => ({proveedor: k, items: m[k]}));
+  },
+  diasDesde(iso, ahora){ if (!iso) return null; return Math.floor((ahora - new Date(iso).getTime()) / 86400000); },
+  comprasArea(cat, ultimos, area){
+    return Logic.compras({insumos: cat.insumos.filter(i => Logic.areaEval(i.area) === area), prep: cat.prep.filter(p => Logic.areaEval(p.area) === area)}, ultimos);
+  },
+  lineasResultado(r, area, quien, fechaTxt, f){
+    const L = [], gr = Logic.porProveedor(r.comprar);
+    L.push({k:'h1', t:'Conteo de ' + area.toLowerCase() + ' · Cuadrochico'});
+    L.push({k:'s', t: fechaTxt + ' · ' + quien});
+    L.push({k:'h2', t:'Por comprar'});
+    if (!gr.length) L.push({k:'p', t:'Nada por comprar con este conteo.'});
+    gr.forEach(g => { L.push({k:'h3', t:g.proveedor});
+      g.items.forEach(x => { const i = x.item;
+        L.push({k:'b', t: i.nombre + ': hay ' + (/octavo/i.test(i.unidadConteo) ? f(x.valor) + '/8 del recipiente (mín. ' + f(i.minimo) + '/8)' : f(x.valor) + ' ' + i.unidadConteo.toLowerCase() + ' (mín. ' + f(i.minimo) + ')')});
+        L.push({k:'s', t: '   Comprar por ' + (i.unidadCompra || '—') + (i.equivalencia ? ' · ' + i.equivalencia : '') + (i.dias ? ' · ' + i.dias : '')}); }); });
+    if (r.preparar.length) { L.push({k:'h2', t:'Por preparar'}); r.preparar.forEach(x => L.push({k:'b', t: x.item.nombre + ': unos ' + f(x.ml) + ' ml (mín. ' + f(x.item.minimo) + ' ml)'})); }
+    if (r.sinConteo.length) L.push({k:'s', t:'Sin contar en este conteo: ' + r.sinConteo.length + ' elementos'});
+    if (r.sinMinimo.length) L.push({k:'s', t:'Sin mínimo definido: ' + r.sinMinimo.join(', ')});
+    return L;
+  },
+  textoPlano(L){ return L.map(l => l.k === 'h1' ? l.t.toUpperCase() : l.k === 'h2' ? '\n' + l.t.toUpperCase() : l.k === 'h3' ? '\n' + l.t : l.k === 'b' ? '• ' + l.t : l.t).join('\n'); },
+  estilo: {h1:{f:'bold 34px sans-serif', c:'#2b1d14', g:14}, h2:{f:'bold 28px sans-serif', c:'#6b4423', g:12}, h3:{f:'bold 24px sans-serif', c:'#2b1d14', g:8},
+           b:{f:'24px sans-serif', c:'#2b1d14', g:6}, p:{f:'24px sans-serif', c:'#2b1d14', g:6}, s:{f:'20px sans-serif', c:'#7a6a5f', g:6}},
+  layout(ctx, L, W){
+    const P = 40, items = []; let y = P;
+    L.forEach(l => { const e = Logic.estilo[l.k]; ctx.font = e.f; const lh = Math.round(parseInt(e.f.match(/(\d+)px/)[1], 10) * 1.3);
+      if (l.k === 'h2') y += 14;
+      const words = String(l.t).split(' '); let line = '';
+      words.forEach(w => { const test = line ? line + ' ' + w : w; if (ctx.measureText(test).width > W - 2 * P && line) { y += lh; items.push({f:e.f, c:e.c, t:line, y:y}); line = w; } else line = test; });
+      y += lh; items.push({f:e.f, c:e.c, t:line, y:y}); y += e.g; });
+    return {items: items, H: y + P, P: P};
+  },
+  buildPdf(jpeg, w, h){
+    const pw = 595, ph = Math.max(200, Math.round(h * pw / w)), enc = new TextEncoder(), parts = [], offs = []; let len = 0;
+    const push = b => { parts.push(b); len += b.length; };
+    const obj = (n, body) => { offs[n] = len; push(enc.encode(n + ' 0 obj\n')); if (typeof body === 'string') push(enc.encode(body)); else body.forEach(b => push(typeof b === 'string' ? enc.encode(b) : b)); push(enc.encode('\nendobj\n')); };
+    push(enc.encode('%PDF-1.4\n'));
+    obj(1, '<< /Type /Catalog /Pages 2 0 R >>');
+    obj(2, '<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
+    obj(3, '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + pw + ' ' + ph + '] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>');
+    obj(4, ['<< /Type /XObject /Subtype /Image /Width ' + w + ' /Height ' + h + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + jpeg.length + ' >>\nstream\n', jpeg, '\nendstream']);
+    const cs = 'q ' + pw + ' 0 0 ' + ph + ' 0 0 cm /Im0 Do Q';
+    obj(5, '<< /Length ' + cs.length + ' >>\nstream\n' + cs + '\nendstream');
+    const xo = len; let x = 'xref\n0 6\n0000000000 65535 f \n';
+    for (let n = 1; n <= 5; n++) x += String(offs[n]).padStart(10, '0') + ' 00000 n \n';
+    push(enc.encode(x + 'trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n' + xo + '\n%%EOF\n'));
+    const out = new Uint8Array(len); let p = 0; parts.forEach(b => { out.set(b, p); p += b.length; }); return out;
+  },
+  parseCsv(s){
+    const rows = []; let row = [], cur = '', q = false;
+    for (let i = 0; i < s.length; i++) { const c = s[i];
+      if (q) { if (c === '"') { if (s[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += c; }
+      else if (c === '"') q = true;
+      else if (c === ',') { row.push(cur); cur = ''; }
+      else if (c === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; }
+      else if (c !== '\r') cur += c;
+    }
+    if (cur !== '' || row.length) { row.push(cur); rows.push(row); }
+    return rows;
+  },
+  tablaCsv(rows, primera){
+    const h = rows.findIndex(r => (r[0] || '').trim() === primera); if (h < 0) return [];
+    const enc = rows[h].map(x => x.trim());
+    return rows.slice(h + 1).filter(r => (r[0] || '').trim()).map(r => { const o = {}; enc.forEach((k, i) => { if (k) o[k] = (r[i] || '').trim(); }); return o; });
+  },
+  catalogoDesdeCsv(csvIns, csvPrep){
+    const g = (o, p) => { const k = Object.keys(o).find(x => x.indexOf(p) === 0); return k === undefined ? '' : o[k]; };
+    const area = v => (v === 'Cafetería' || v === 'Cocina' || v === 'Ambos') ? v : 'Cocina';
+    const insumos = Logic.tablaCsv(Logic.parseCsv(csvIns), 'Insumo').map(o => ({id: o['Insumo'], nombre: o['Insumo'], categoria: o['Categoría'] || '', proveedor: o['Proveedor'] || '',
+      unidadConteo: g(o, 'Cómo lo cuentan'), unidadCompra: g(o, 'Cómo se compra'), equivalencia: o['Equivalencia'] || '', minimo: Logic.num(g(o, 'Mínimo')), ubicacion: o['Ubicación'] || '',
+      dias: g(o, 'Día(s)'), bote: g(o, '¿Tiene bote') === 'Sí', notas: o['Notas'] || '', area: area(g(o, 'Se cuenta en'))}));
+    const prep = Logic.tablaCsv(Logic.parseCsv(csvPrep), 'Preparación').map(o => ({id: o['Preparación'], nombre: o['Preparación'], envase: o['Envase'] || '', capacidad: Logic.num(g(o, 'Capacidad')),
+      origen: o['Origen'] || '', comoSeCuenta: g(o, 'Cómo se cuenta'), tara: Logic.num(g(o, 'Tara')), minimo: Logic.num(g(o, 'Mínimo')), area: area(g(o, 'Se cuenta en')),
+      temporada: g(o, '¿De temporada') === 'Sí', insumoOrigen: g(o, 'Insumo de origen')}));
+    return {insumos: insumos, prep: prep, cfg: {densidad: 1}};
+  }
+};
+//LOGIC-END
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = n => (n == null ? '' : (Math.round(n * 100) / 100).toLocaleString('es-MX'));
+function fecha(iso){ try { return new Date(iso).toLocaleDateString('es-MX', {day:'numeric', month:'short'}); } catch (e) { return ''; } }
+
+// ---------- almacenamiento local seguro
+const mem = {};
+const store = {
+  get(k){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return mem[k] || null; } },
+  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { mem[k] = v; } },
+  del(k){ try { localStorage.removeItem(k); } catch (e) {} delete mem[k]; }
+};
+
+// ---------- API: Google Apps Script o modo de prueba local
+function gas(fn){ const args = Array.prototype.slice.call(arguments, 1);
+  return new Promise((res, rej) => { google.script.run.withSuccessHandler(res).withFailureHandler(e => rej(new Error(e && e.message ? e.message : 'Error de conexión')))[fn].apply(null, args); }); }
+const DEMO = [{nombre:'Barista (prueba)', pin:'1111', rol:'Barista'}, {nombre:'Gerente (prueba)', pin:'2222', rol:'Gerente'}];
+const Local = {
+  data(){ return store.get('cc_proto') || {conteos: [], extras: []}; },
+  async users(){ return DEMO.map(u => u.nombre); },
+  async login(n, p){ const u = DEMO.find(x => x.nombre === n && x.pin === p); if (!u) throw new Error('Nombre o PIN incorrecto'); return {token:'demo', nombre:u.nombre, rol:u.rol}; },
+  async catalog(){
+    const cat = Object.assign({origen: 'copia'}, EMBED);
+    if (!(CSV.gidInsumos && CSV.gidPrep)) return cat;
+    const get = gid => fetch(CSV.base + '?gid=' + gid + '&single=true&output=csv', {cache: 'no-store'}).then(r => { if (!r.ok) throw new Error('csv'); return r.text(); }).catch(() => null);
+    const res = await Promise.all([get(CSV.gidInsumos), get(CSV.gidPrep)]);
+    const ins = res[0] ? Logic.catalogoDesdeCsv(res[0], '').insumos : [], prep = res[1] ? Logic.catalogoDesdeCsv('', res[1]).prep : [];
+    const okI = ins.length > 5, okP = prep.length > 0;
+    if (okI) cat.insumos = ins; if (okP) cat.prep = prep;
+    cat.origen = okI && okP ? 'hoja' : (okI || okP ? 'parcial' : 'copia'); cat.faltaIns = !okI; cat.faltaPrep = !okP;
+    return cat;
+  },
+  async saveConteo(t, area, items){ const d = this.data(), ts = new Date().toISOString(); items.forEach(it => d.conteos.push(Object.assign({}, it, {area, ts, usuario: S.user}))); store.set('cc_proto', d); },
+  async saveExtra(t, e){ const d = this.data(); d.extras.push({ts: new Date().toISOString(), usuario: S.user, texto: e.texto, urgencia: e.urgencia}); store.set('cc_proto', d); },
+  async estado(){ const d = this.data(), m = {}, ult = {};
+    d.conteos.forEach(c => { m[c.tipo + '|' + c.id + '|' + c.area] = c; ult[c.area] = c.ts; });
+    const ger = S.rol === 'Gerente';
+    return {ultimoConteo: ult, ultimos: ger ? Object.keys(m).map(k => m[k]) : [], extras: ger ? d.extras.slice(-30).reverse() : []}; }
+};
+const Api = GAS ? {
+  users: () => gas('getUsuarios'), login: (n, p) => gas('login', n, p), catalog: t => gas('getCatalogo', t),
+  saveConteo: (t, a, i) => gas('guardarConteo', t, a, i), saveExtra: (t, e) => gas('guardarExtra', t, e), estado: t => gas('getEstado', t)
+} : {
+  users: () => Local.users(), login: (n, p) => Local.login(n, p), catalog: t => Local.catalog(t),
+  saveConteo: (t, a, i) => Local.saveConteo(t, a, i), saveExtra: (t, e) => Local.saveExtra(t, e), estado: t => Local.estado(t)
+};
+
+// ---------- estado de la app
+const S = {token:null, user:null, rol:null, cat:null, tab:'conteo', area:'Cocina', vals:{Cocina:{}, 'Cafetería':{}}, estado:null};
+function toast(msg){ const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 3200); }
+const testBanner = () => GAS ? '' : '<div class="test">Modo de prueba: los datos se guardan solo en este dispositivo. Usuarios: Barista (prueba), PIN 1111; Gerente (prueba), PIN 2222.' + (S.cat ? (S.cat.origen === 'hoja' ? ' Catálogo leído de tu hoja de Google.' : S.cat.origen === 'parcial' ? ' Catálogo parcial: ' + (S.cat.faltaIns ? 'Insumos' : 'Preparaciones') + ' no se pudo leer de la hoja y se usa la copia de la página.' : ' Catálogo: copia incluida en la página.') : '') + '</div>';
+
+async function start(){
+  const saved = store.get('cc_sesion');
+  if (saved && saved.exp > Date.now()) {
+    try { S.token = saved.token; S.user = saved.nombre; S.rol = saved.rol; S.cat = await Api.catalog(S.token); S.estado = await Api.estado(S.token); return render(); }
+    catch (e) { store.del('cc_sesion'); S.token = null; }
+  }
+  renderLogin();
+}
+async function renderLogin(){
+  let names = []; try { names = await Api.users(); } catch (e) {}
+  $('#app').innerHTML = '<header><h1>Cuadrochico</h1></header>' + testBanner() +
+    '<div class="login"><label>Nombre<select id="lu">' + names.map(n => '<option>' + esc(n) + '</option>').join('') + '</select></label>' +
+    '<label>PIN<input id="lp" type="password" inputmode="numeric" autocomplete="off" maxlength="8"></label>' +
+    '<button id="lb">Entrar</button><div class="mut" id="le"></div></div>';
+  $('#lb').onclick = async () => {
+    $('#le').textContent = '';
+    try {
+      const r = await Api.login($('#lu').value, $('#lp').value);
+      S.token = r.token; S.user = r.nombre; S.rol = r.rol;
+      store.set('cc_sesion', {token: r.token, nombre: r.nombre, rol: r.rol, exp: Date.now() + 6 * 3600 * 1000});
+      S.cat = await Api.catalog(S.token); S.estado = await Api.estado(S.token); render();
+    } catch (e) { $('#le').textContent = e.message; }
+  };
+}
+
+function render(){
+  const ger = S.rol === 'Gerente';
+  let h = '<header><div><h1>Cuadrochico · Inventario</h1><div class="who">' + esc(S.user) + '</div></div><button class="link" id="out">Salir</button></header>' + testBanner();
+  h += '<div class="tabs"><button class="chip ' + (S.tab === 'conteo' ? 'on' : '') + '" data-tab="conteo">Conteo</button>' +
+       (S.resultado ? '<button class="chip ' + (S.tab === 'resultado' ? 'on' : '') + '" data-tab="resultado">Resultado</button>' : '') +
+       (ger ? '<button class="chip ' + (S.tab === 'compras' ? 'on' : '') + '" data-tab="compras">Compras</button>' : '') + '</div>';
+  h += S.tab === 'conteo' ? vistaConteo() : S.tab === 'resultado' ? vistaResultado() : vistaCompras();
+  $('#app').innerHTML = h;
+  $('#out').onclick = () => { store.del('cc_sesion'); S.token = null; renderLogin(); };
+  document.querySelectorAll('[data-tab]').forEach(b => b.onclick = async () => { S.tab = b.dataset.tab; if (S.tab === 'compras') { try { S.estado = await Api.estado(S.token); } catch (e) { toast(e.message); } } render(); });
+  document.querySelectorAll('[data-area]').forEach(b => b.onclick = () => { S.area = b.dataset.area; render(); });
+  const gs = $('#guardar'); if (gs) gs.onclick = guardar;
+  const ge = $('#extra'); if (ge) ge.onclick = enviarExtra;
+  document.querySelectorAll('[data-share]').forEach(b => b.onclick = () => compartir(b.dataset.share));
+  if (S.tab === 'resultado') iniciaArchivos().catch(() => toast('No se pudo preparar la imagen; usa Enviar texto'));
+  const pr = $('#imprimir'); if (pr) pr.onclick = () => { try { window.print(); } catch (e) { toast('Usa el menú del navegador para imprimir o guardar como PDF'); } };
+  document.querySelectorAll('[data-k]').forEach(el => { const v = S.vals[S.area][el.dataset.k]; if (v && v[el.dataset.f] != null) el.value = v[el.dataset.f]; });
+  document.querySelectorAll('[data-o]').forEach(el => actualizaMl(el.dataset.o));
+}
+
+function bannerArea(a){
+  const ult = S.estado && S.estado.ultimoConteo ? S.estado.ultimoConteo[a] : null, d = Logic.diasDesde(ult, Date.now());
+  if (d === null) return '<div class="banner warn">' + esc(a) + ': aún no hay conteo. Toca contar.</div>';
+  if (d >= 7) return '<div class="banner warn">' + esc(a) + ': último conteo hace ' + d + ' días (' + fecha(ult) + '). Toca contar.</div>';
+  return '<div class="banner">' + esc(a) + ': último conteo el ' + fecha(ult) + '.</div>';
+}
+function vistaConteo(){
+  const cat = S.cat, a = S.area;
+  let h = '<div class="chips noprint">' + AREAS.map(x => '<button class="chip ' + (x === a ? 'on' : '') + '" data-area="' + x + '">' + x + '</button>').join('') + '</div>' + bannerArea(a);
+  const ins = cat.insumos.filter(i => Logic.enArea(i.area, a)), groups = {};
+  ins.forEach(i => (groups[i.categoria || 'Otros'] = groups[i.categoria || 'Otros'] || []).push(i));
+  Object.keys(groups).sort().forEach(g => { h += '<h2>' + esc(g) + '</h2><div class="card">' + groups[g].map(filaInsumo).join('') + '</div>'; });
+  const pr = cat.prep.filter(p => Logic.enArea(p.area, a));
+  if (pr.length) h += '<h2>Preparaciones</h2><div class="card">' + pr.map(filaPrep).join('') + '</div>';
+  h += '<h2>¿Falta algo que no está en la lista?</h2><div class="card"><textarea id="xt" placeholder="Insumo o cosa que hace falta"></textarea>' +
+       '<div class="ctl" style="justify-content:space-between;margin-top:8px"><select id="xu"><option>Esta semana</option><option>Urgente</option><option>De temporada</option></select><button class="sec" id="extra">Enviar</button></div></div>';
+  h += '<div class="sticky noprint"><button id="guardar">Guardar conteo de ' + esc(a) + '</button></div>';
+  return h;
+}
+function filaInsumo(i){
+  const k = 'i|' + i.id;
+  const ctrl = /octavo/i.test(i.unidadConteo)
+    ? '<select data-k="' + esc(k) + '" data-f="a"><option value="">—</option>' + [0,1,2,3,4,5,6,7,8].map(n => '<option value="' + n + '">' + n + '/8</option>').join('') + '</select>'
+    : '<input data-k="' + esc(k) + '" data-f="a" type="text" inputmode="decimal" placeholder="0">';
+  return '<div class="row"><div class="nm">' + esc(i.nombre) + '<small>' + esc(i.unidadConteo) + '</small></div><div class="ctl">' + ctrl + '</div></div>';
+}
+function filaPrep(p){
+  const k = 'p|' + p.id;
+  let ctrl;
+  if (p.comoSeCuenta === 'Peso') ctrl = '<input data-k="' + esc(k) + '" data-f="a" type="text" inputmode="decimal" placeholder="g">';
+  else ctrl = '<input data-k="' + esc(k) + '" data-f="a" type="text" inputmode="decimal" placeholder="enteras">' +
+    '<select data-k="' + esc(k) + '" data-f="b"><option value="">abierta</option><option value="0">0%</option><option value="0.25">25%</option><option value="0.5">50%</option><option value="0.75">75%</option></select>';
+  const hint = p.comoSeCuenta === 'Peso' ? 'Peso con botellón (g)' : 'Botellas enteras + nivel de la abierta';
+  return '<div class="row"><div class="nm">' + esc(p.nombre) + (p.temporada ? '<span class="tag">temporada</span>' : '') + '<small>' + hint + '</small></div><div class="ctl">' + ctrl + '<div class="ml" data-o="' + esc(k) + '"></div></div></div>';
+}
+function actualizaMl(k){
+  const el = Array.prototype.find.call(document.querySelectorAll('[data-o]'), x => x.dataset.o === k); if (!el) return;
+  const p = S.cat.prep.find(x => 'p|' + x.id === k), v = S.vals[S.area][k] || {}, ml = Logic.calcMl(p, v, S.cat.cfg);
+  if (ml === null) { el.textContent = ''; el.className = 'ml'; return; }
+  const low = p.minimo != null && ml <= p.minimo;
+  el.textContent = '≈ ' + fmt(ml) + ' ml' + (low ? ' · bajo el mínimo' : ''); el.className = 'ml' + (low ? ' low' : '');
+}
+function onInput(e){
+  const t = e.target; if (!t.dataset || !t.dataset.k) return;
+  const v = S.vals[S.area][t.dataset.k] = S.vals[S.area][t.dataset.k] || {}; v[t.dataset.f] = t.value;
+  if (t.dataset.k.charAt(0) === 'p') actualizaMl(t.dataset.k);
+}
+document.addEventListener('input', onInput); document.addEventListener('change', onInput);
+
+async function guardar(){
+  const a = S.area, vals = S.vals[a], items = [];
+  S.cat.insumos.forEach(i => { const v = vals['i|' + i.id]; const n = v ? Logic.num(v.a) : null; if (n !== null) items.push({tipo:'insumo', id:i.id, nombre:i.nombre, valor:n, unidad:i.unidadConteo}); });
+  S.cat.prep.forEach(p => { const v = vals['p|' + p.id]; if (!v) return; const ml = Logic.calcMl(p, v, S.cat.cfg); if (ml === null) return;
+    const valor = p.comoSeCuenta === 'Peso' ? Logic.num(v.a) : (Logic.num(v.a) || 0) + (Logic.num(v.b) || 0);
+    items.push({tipo:'prep', id:p.id, nombre:p.nombre, valor:valor, unidad:p.comoSeCuenta === 'Peso' ? 'g con botellón' : 'botellas', ml:Math.round(ml)}); });
+  if (!items.length) return toast('Anota al menos una cantidad');
+  if (!confirm('Guardar ' + items.length + ' cantidades de ' + a + '?')) return;
+  try {
+    await Api.saveConteo(S.token, a, items); S.vals[a] = {}; S.estado = await Api.estado(S.token);
+    const ahora = new Date().toISOString(), ult = items.map(it => ({tipo: it.tipo, id: it.id, area: a, valor: it.valor, ml: it.ml == null ? null : it.ml, ts: ahora}));
+    let ft = ''; try { ft = new Date().toLocaleDateString('es-MX', {day: 'numeric', month: 'long', year: 'numeric'}); } catch (e) {}
+    S.resultado = {area: a, L: Logic.lineasResultado(Logic.comprasArea(S.cat, ult, a), a, S.user, ft, fmt)}; S.archivos = null; S.alt = null; S.tab = 'resultado';
+    toast('Conteo guardado'); render(); }
+  catch (e) { toast(e.message); }
+}
+async function enviarExtra(){
+  const texto = $('#xt').value.trim(); if (!texto) return toast('Escribe qué hace falta');
+  try { await Api.saveExtra(S.token, {texto: texto, urgencia: $('#xu').value}); $('#xt').value = ''; toast('Enviado'); } catch (e) { toast(e.message); }
+}
+
+function vistaCompras(){
+  const est = S.estado || {ultimos: [], extras: []}, r = Logic.compras(S.cat, est.ultimos);
+  const ts = (est.ultimos || []).map(u => u.ts).sort().pop();
+  let h = '<div class="mut">' + (ts ? 'Con base en el conteo más reciente (' + fecha(ts) + '). ' : 'Aún no hay conteos. ') + 'El mínimo se evalúa en cocina; si el insumo no se cuenta en cocina, en cafetería. Se avisa con existencia menor o igual al mínimo.</div>';
+  h += '<button class="sec noprint" id="imprimir" style="margin:8px 0">Imprimir o guardar PDF</button>';
+  h += '<h2>Por comprar</h2>';
+  const gr = Logic.porProveedor(r.comprar);
+  if (!gr.length) h += '<div class="card mut">Nada por comprar con los conteos actuales.</div>';
+  gr.forEach(g => { h += '<div class="card"><strong>' + esc(g.proveedor) + '</strong>' + g.items.map(x => {
+    const i = x.item; return '<div class="row"><div class="nm">' + esc(i.nombre) + '<small>Hay ' + fmt(x.valor) + ' ' + esc(i.unidadConteo) + ' (' + esc(x.area) + ') · mínimo ' + fmt(i.minimo) + '</small>' +
+      '<small>Se compra por ' + esc(i.unidadCompra || '—') + (i.equivalencia ? ' · ' + esc(i.equivalencia) : '') + (i.dias ? ' · ' + esc(i.dias) : '') + '</small></div></div>'; }).join('') + '</div>'; });
+  if (r.preparar.length) h += '<h2>Por preparar</h2><div class="card">' + r.preparar.map(x => '<div class="row"><div class="nm">' + esc(x.item.nombre) + '<small>Hay unos ' + fmt(x.ml) + ' ml (' + esc(x.area) + ') · mínimo ' + fmt(x.item.minimo) + ' ml</small></div></div>').join('') + '</div>';
+  if ((est.extras || []).length) h += '<h2>Extras pedidos</h2><div class="card">' + est.extras.map(e => '<div class="row"><div class="nm">' + esc(e.texto) + '<small>' + esc(e.urgencia) + ' · ' + esc(e.usuario) + ' · ' + fecha(e.ts) + '</small></div></div>').join('') + '</div>';
+  if (r.sinMinimo.length) h += '<h2>Sin mínimo definido</h2><div class="card mut">' + r.sinMinimo.map(esc).join(', ') + '</div>';
+  if (r.sinConteo.length) h += '<h2>Sin conteo todavía</h2><div class="card mut">' + r.sinConteo.map(esc).join(', ') + '</div>';
+  return h;
+}
+
+function vistaResultado(){
+  const R = S.resultado; if (!R) return '';
+  let h = '<div class="mut">Esta lista sale solo del conteo que acabas de guardar. Puedes enviarla por WhatsApp u otra aplicación.</div><div class="btns noprint">' +
+    '<button data-share="imagen" class="sh" disabled>Compartir imagen</button><button data-share="pdf" class="sh" disabled>Compartir PDF</button><button class="sec sh" data-share="texto">Enviar texto</button></div><div id="alt" class="alt"></div><div class="card">';
+  R.L.forEach(l => { h += l.k === 'h1' ? '<h2 style="margin-top:0">' + esc(l.t) + '</h2>' : l.k === 'h2' ? '<h2>' + esc(l.t) + '</h2>' : l.k === 'h3' ? '<strong>' + esc(l.t) + '</strong>' :
+    l.k === 'b' ? '<div>• ' + esc(l.t) + '</div>' : '<div class="mut">' + esc(l.t) + '</div>'; });
+  return h + '</div>';
+}
+function nombreArchivo(ext){ let d = new Date().toISOString().slice(0, 10); return 'conteo-' + S.resultado.area.toLowerCase().replace('í', 'i') + '-' + d + '.' + ext; }
+async function iniciaArchivos(){
+  if (S.archivos) return habilita();
+  const R = S.resultado, c = document.createElement('canvas'), W = 900, ctx = c.getContext('2d'), lay = Logic.layout(ctx, R.L, W);
+  c.width = W; c.height = lay.H; const x = c.getContext('2d'); x.fillStyle = '#ffffff'; x.fillRect(0, 0, W, lay.H); x.textBaseline = 'alphabetic';
+  lay.items.forEach(it => { x.font = it.f; x.fillStyle = it.c; x.fillText(it.t, lay.P, it.y); });
+  const pngBlob = await new Promise(r => c.toBlob(r, 'image/png')), dataPng = c.toDataURL('image/png'), jp = c.toDataURL('image/jpeg', 0.92).split(',')[1];
+  const bin = atob(jp), bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  const pdf = Logic.buildPdf(bytes, W, lay.H);
+  S.archivos = {titulo: R.L[0].t, texto: Logic.textoPlano(R.L), dataPng: dataPng,
+    png: new File([pngBlob], nombreArchivo('png'), {type: 'image/png'}), pdf: new File([pdf], nombreArchivo('pdf'), {type: 'application/pdf'})};
+  habilita();
+}
+function habilita(){ document.querySelectorAll('.sh').forEach(b => b.disabled = false); }
+async function compartir(kind){
+  const a = S.archivos; if (!a) return toast('Preparando el archivo, intenta de nuevo');
+  if (kind === 'texto') {
+    try { if (navigator.share) { await navigator.share({title: a.titulo, text: a.texto}); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+    return copiarTexto();
+  }
+  const file = kind === 'imagen' ? a.png : a.pdf;
+  try { if (navigator.canShare && navigator.canShare({files: [file]})) { await navigator.share({files: [file], title: a.titulo}); return; } }
+  catch (e) { if (e && e.name === 'AbortError') return; }
+  const el = $('#alt'); if (!el) return;
+  if (kind === 'imagen') el.innerHTML = '<p class="mut">Tu navegador no permite compartir desde aquí. Mantén presionada la imagen para guardarla o enviarla.</p><img alt="Resultado del conteo" src="' + a.dataPng + '">';
+  else { const u = URL.createObjectURL(a.pdf); el.innerHTML = '<p class="mut">Tu navegador no permite compartir desde aquí. Abre o descarga el PDF y envíalo desde ahí.</p><a href="' + u + '" download="' + esc(a.pdf.name) + '" target="_blank">Abrir PDF</a>'; }
+}
+async function copiarTexto(){
+  const t = S.archivos.texto;
+  try { await navigator.clipboard.writeText(t); toast('Texto copiado; pégalo en WhatsApp o donde quieras'); }
+  catch (e) { const ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); toast('Texto copiado'); } catch (_) { toast('No se pudo copiar'); } ta.remove(); }
+}
+start();
+</script>
+</body>
+</html>
