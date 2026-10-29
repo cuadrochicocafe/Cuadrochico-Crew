@@ -52,7 +52,7 @@ const EMBED = {"insumos": [{"id": "Leche Entera 1.5 L", "nombre": "Leche Entera 
 const GAS = typeof google !== 'undefined' && google.script && google.script.run;
 const AREAS = ['Cocina','Cafetería'];
 // Hoja publicada en la web (solo para la versión de GitHub). Pega aquí el gid de cada pestaña.
-const CSV = {base: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRsojjkMzinSj--7LRmYKh19NnFMWJtvc69zF3458W2TbGC6MmIWlf-S_HXi8p43Q/pub', gidInsumos: '609212636', gidPrep: '215775454'};
+const CSV = {base: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTyhObJMNCcGhSSHNJni8nruW-LCnKA5zNx7YR8pSKl2JWqDD0tl7ovivnoJZksnQ/pub', gidInsumos: '1648174302', gidPrep: '763189205', espera: 700};
 
 //LOGIC-START
 const Logic = {
@@ -194,9 +194,16 @@ const Local = {
   async catalog(){
     const cat = Object.assign({origen: 'copia'}, EMBED);
     if (!(CSV.gidInsumos && CSV.gidPrep)) return cat;
-    const get = gid => fetch(CSV.base + '?gid=' + gid + '&single=true&output=csv', {cache: 'no-store'})
-      .then(r => r.ok ? r.text() : Promise.reject(new Error('HTTP ' + r.status))).then(x => ({t: x})).catch(e => ({e: String(e && e.message || e)}));
-    const res = await Promise.all([get(CSV.gidInsumos), get(CSV.gidPrep)]);
+    const get = async gid => {
+      const url = CSV.base + '?gid=' + gid + '&single=true&output=csv'; let err = '';
+      for (let k = 0; k < 3; k++) {
+        try { const r = await fetch(url); if (r.ok) return {t: await r.text()}; err = 'HTTP ' + r.status; }
+        catch (e) { err = String(e && e.message || e); }
+        await new Promise(ok => setTimeout(ok, CSV.espera * (k + 1)));
+      }
+      return {e: err + ' (3 intentos)'};
+    };
+    const res = [await get(CSV.gidInsumos), await get(CSV.gidPrep)];
     const ins = res[0].t ? Logic.catalogoDesdeCsv(res[0].t, '').insumos : [], prep = res[1].t ? Logic.catalogoDesdeCsv('', res[1].t).prep : [];
     const okI = ins.length > 5, okP = prep.length > 0;
     if (okI) cat.insumos = ins; if (okP) cat.prep = prep;
