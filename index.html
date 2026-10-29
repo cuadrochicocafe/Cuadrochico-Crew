@@ -149,20 +149,22 @@ const Logic = {
     if (cur !== '' || row.length) { row.push(cur); rows.push(row); }
     return rows;
   },
+  fold(s){ return String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase(); },
   tablaCsv(rows, primera){
-    const h = rows.findIndex(r => (r[0] || '').trim() === primera); if (h < 0) return [];
-    const enc = rows[h].map(x => x.trim());
-    return rows.slice(h + 1).filter(r => (r[0] || '').trim()).map(r => { const o = {}; enc.forEach((k, i) => { if (k) o[k] = (r[i] || '').trim(); }); return o; });
+    const key = Logic.fold(primera), h = rows.findIndex(r => Logic.fold(r[0]) === key); if (h < 0) return [];
+    const enc = rows[h].map(Logic.fold);
+    return rows.slice(h + 1).filter(r => (r[0] || '').trim()).map(r => { const o = {}; enc.forEach((k, i) => { if (k) o[k] = String(r[i] || '').normalize('NFC').trim(); }); return o; });
   },
   catalogoDesdeCsv(csvIns, csvPrep){
     const g = (o, p) => { const k = Object.keys(o).find(x => x.indexOf(p) === 0); return k === undefined ? '' : o[k]; };
-    const area = v => (v === 'Cafetería' || v === 'Cocina' || v === 'Ambos') ? v : 'Cocina';
-    const insumos = Logic.tablaCsv(Logic.parseCsv(csvIns), 'Insumo').map(o => ({id: o['Insumo'], nombre: o['Insumo'], categoria: o['Categoría'] || '', proveedor: o['Proveedor'] || '',
-      unidadConteo: g(o, 'Cómo lo cuentan'), unidadCompra: g(o, 'Cómo se compra'), equivalencia: o['Equivalencia'] || '', minimo: Logic.num(g(o, 'Mínimo')), ubicacion: o['Ubicación'] || '',
-      dias: g(o, 'Día(s)'), bote: g(o, '¿Tiene bote') === 'Sí', notas: o['Notas'] || '', area: area(g(o, 'Se cuenta en'))}));
-    const prep = Logic.tablaCsv(Logic.parseCsv(csvPrep), 'Preparación').map(o => ({id: o['Preparación'], nombre: o['Preparación'], envase: o['Envase'] || '', capacidad: Logic.num(g(o, 'Capacidad')),
-      origen: o['Origen'] || '', comoSeCuenta: g(o, 'Cómo se cuenta'), tara: Logic.num(g(o, 'Tara')), minimo: Logic.num(g(o, 'Mínimo')), area: area(g(o, 'Se cuenta en')),
-      temporada: g(o, '¿De temporada') === 'Sí', insumoOrigen: g(o, 'Insumo de origen')}));
+    const area = v => { const f = Logic.fold(v); return f === 'cafeteria' ? 'Cafetería' : f === 'ambos' ? 'Ambos' : 'Cocina'; };
+    const si = v => Logic.fold(v) === 'si';
+    const insumos = Logic.tablaCsv(Logic.parseCsv(csvIns), 'Insumo').map(o => ({id: o['insumo'], nombre: o['insumo'], categoria: o['categoria'] || '', proveedor: o['proveedor'] || '',
+      unidadConteo: g(o, 'como lo cuentan'), unidadCompra: g(o, 'como se compra'), equivalencia: o['equivalencia'] || '', minimo: Logic.num(g(o, 'minimo')), ubicacion: o['ubicacion'] || '',
+      dias: g(o, 'dia(s)'), bote: si(g(o, '¿tiene bote')), notas: o['notas'] || '', area: area(g(o, 'se cuenta en'))}));
+    const prep = Logic.tablaCsv(Logic.parseCsv(csvPrep), 'Preparación').map(o => ({id: o['preparacion'], nombre: o['preparacion'], envase: o['envase'] || '', capacidad: Logic.num(g(o, 'capacidad')),
+      origen: o['origen'] || '', comoSeCuenta: g(o, 'como se cuenta'), tara: Logic.num(g(o, 'tara')), minimo: Logic.num(g(o, 'minimo')), area: area(g(o, 'se cuenta en')),
+      temporada: si(g(o, '¿de temporada')), insumoOrigen: g(o, 'insumo de origen')}));
     return {insumos: insumos, prep: prep, cfg: {densidad: 1}};
   }
 };
@@ -192,12 +194,14 @@ const Local = {
   async catalog(){
     const cat = Object.assign({origen: 'copia'}, EMBED);
     if (!(CSV.gidInsumos && CSV.gidPrep)) return cat;
-    const get = gid => fetch(CSV.base + '?gid=' + gid + '&single=true&output=csv', {cache: 'no-store'}).then(r => { if (!r.ok) throw new Error('csv'); return r.text(); }).catch(() => null);
+    const get = gid => fetch(CSV.base + '?gid=' + gid + '&single=true&output=csv', {cache: 'no-store'})
+      .then(r => r.ok ? r.text() : Promise.reject(new Error('HTTP ' + r.status))).then(x => ({t: x})).catch(e => ({e: String(e && e.message || e)}));
     const res = await Promise.all([get(CSV.gidInsumos), get(CSV.gidPrep)]);
-    const ins = res[0] ? Logic.catalogoDesdeCsv(res[0], '').insumos : [], prep = res[1] ? Logic.catalogoDesdeCsv('', res[1]).prep : [];
+    const ins = res[0].t ? Logic.catalogoDesdeCsv(res[0].t, '').insumos : [], prep = res[1].t ? Logic.catalogoDesdeCsv('', res[1].t).prep : [];
     const okI = ins.length > 5, okP = prep.length > 0;
     if (okI) cat.insumos = ins; if (okP) cat.prep = prep;
-    cat.origen = okI && okP ? 'hoja' : (okI || okP ? 'parcial' : 'copia'); cat.faltaIns = !okI; cat.faltaPrep = !okP;
+    cat.origen = okI && okP ? 'hoja' : (okI || okP ? 'parcial' : 'copia');
+    cat.motivo = [okI ? '' : 'Insumos: ' + (res[0].e || 'sin filas reconocidas'), okP ? '' : 'Preparaciones: ' + (res[1].e || 'sin filas reconocidas')].filter(Boolean).join(' · ');
     return cat;
   },
   async saveConteo(t, area, items){ const d = this.data(), ts = new Date().toISOString(); items.forEach(it => d.conteos.push(Object.assign({}, it, {area, ts, usuario: S.user}))); store.set('cc_proto', d); },
@@ -218,7 +222,8 @@ const Api = GAS ? {
 // ---------- estado de la app
 const S = {token:null, user:null, rol:null, cat:null, tab:'conteo', area:'Cocina', vals:{Cocina:{}, 'Cafetería':{}}, estado:null};
 function toast(msg){ const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 3200); }
-const testBanner = () => GAS ? '' : '<div class="test">Modo de prueba: los datos se guardan solo en este dispositivo. Usuarios: Barista (prueba), PIN 1111; Gerente (prueba), PIN 2222.' + (S.cat ? (S.cat.origen === 'hoja' ? ' Catálogo leído de tu hoja de Google.' : S.cat.origen === 'parcial' ? ' Catálogo parcial: ' + (S.cat.faltaIns ? 'Insumos' : 'Preparaciones') + ' no se pudo leer de la hoja y se usa la copia de la página.' : ' Catálogo: copia incluida en la página.') : '') + '</div>';
+const testBanner = () => GAS ? '' : '<div class="test">Modo de prueba: los datos se guardan solo en este dispositivo. Usuarios: Barista (prueba), PIN 1111; Gerente (prueba), PIN 2222.' +
+  (!S.cat ? '' : S.cat.origen === 'hoja' ? ' Catálogo leído de tu hoja de Google.' : S.cat.motivo ? ' Catálogo ' + (S.cat.origen === 'parcial' ? 'parcial' : 'de la copia') + '. No se pudo leer de la hoja: ' + esc(S.cat.motivo) + '. Se usa la copia de la página.' : ' Catálogo: copia incluida en la página.') + '</div>';
 
 async function start(){
   const saved = store.get('cc_sesion');
