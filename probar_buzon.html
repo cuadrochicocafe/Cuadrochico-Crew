@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Probar el buzón · Cuadrochico</title>
+<style>
+:root{--bg:#faf6f1;--card:#fff;--ink:#2b1d14;--mut:#7a6a5f;--acc:#6b4423;--line:#e4d9cd;--ok:#2e7d32;--warn:#b3261e;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#1c1511;--card:#271e18;--ink:#f3e9df;--mut:#b5a597;--acc:#d9a66b;--line:#3b2e25;--ok:#81c784;--warn:#ff8a80;color-scheme:dark}}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,Arial,sans-serif}
+.wrap{max-width:680px;margin:0 auto;padding:18px 16px 60px}
+h1{font-size:21px}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:12px 0}
+button,select{font:inherit;color:inherit;border-radius:10px;padding:10px 12px;border:1px solid var(--line);background:var(--bg)}
+button.p{background:var(--acc);color:#fff;border:0;font-weight:600;cursor:pointer}
+.mut{color:var(--mut);font-size:14px}.ok{color:var(--ok);font-weight:600}.bad{color:var(--warn);font-weight:600}
+#log{font:13px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap;word-break:break-word}
+table{border-collapse:collapse;width:100%;font-size:13px}td,th{border:1px solid var(--line);padding:4px 6px;text-align:left;vertical-align:top;word-break:break-word}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Probar el buzón</h1>
+<p class="mut">Esta página envía un registro de prueba al formulario y revisa cada 15 segundos si ya aparece en la hoja publicada. Sirve para comprobar tres cosas: que el envío funciona, en qué columna cae cada dato y cuánto tarda Google en mostrarlo.</p>
+<div class="card">
+  <label class="mut">Tamaño del dato de prueba</label><br>
+  <select id="tam"><option value="50">Corto (50 caracteres)</option><option value="3000">Largo (3,000 caracteres)</option><option value="15000">Muy largo (15,000 caracteres)</option></select>
+  <p><button class="p" id="enviar">Enviar prueba</button> <button id="leer">Solo leer la hoja</button></p>
+  <div id="estado" class="mut">Sin envíos todavía.</div>
+</div>
+<div class="card"><strong>Registro</strong><div id="log" class="mut"></div></div>
+<div class="card"><strong>Últimas filas de la hoja</strong><div id="tabla" class="mut">Aún no se ha leído.</div></div>
+</div>
+<script>
+const FORM = 'https://docs.google.com/forms/d/e/1FAIpQLScqNfWLkFrQ96hH8SPUZjg142BXZ7eWLWaSO2FtsO8QN04fYw/formResponse';
+const ENTRY = {id: 'entry.1035502559', tipo: 'entry.1681072760', datos: 'entry.2147107268'};
+const CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSTZvLnwScq_XwswZov0mubidTnB9Z4FFwN_etMaIYWIkUhrXfAu-RWQRxmbGdN1hSJ7-J4K3slpkjq/pub?output=csv';
+const $ = s => document.querySelector(s);
+const hora = () => new Date().toLocaleTimeString('es-MX');
+const log = t => { $('#log').textContent += hora() + '  ' + t + '\n'; };
+function parseCsv(s){
+  const rows = []; let row = [], cur = '', q = false;
+  for (let i = 0; i < s.length; i++) { const c = s[i];
+    if (q) { if (c === '"') { if (s[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += c; }
+    else if (c === '"') q = true; else if (c === ',') { row.push(cur); cur = ''; }
+    else if (c === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; } else if (c !== '\r') cur += c;
+  }
+  if (cur !== '' || row.length) { row.push(cur); rows.push(row); } return rows;
+}
+async function leer(){
+  const r = await fetch(CSV, {cache: 'no-store'}); if (!r.ok) throw new Error('HTTP ' + r.status);
+  return parseCsv(await r.text());
+}
+function muestra(rows){
+  if (!rows.length) { $('#tabla').textContent = 'La hoja está vacía (sin encabezados).'; return; }
+  const esc = s => String(s).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+  const cortar = s => s.length > 60 ? s.slice(0, 60) + '… (' + s.length + ' caracteres)' : s;
+  $('#tabla').innerHTML = '<table><tr>' + rows[0].map(h => '<th>' + esc(h) + '</th>').join('') + '</tr>' +
+    rows.slice(-5).filter((x, i, a) => rows.length > 1).map(r => '<tr>' + r.map(c => '<td>' + esc(cortar(c)) + '</td>').join('') + '</tr>').join('') + '</table>';
+}
+$('#leer').onclick = async () => { try { const rows = await leer(); log('Lectura correcta: ' + (rows.length - 1) + ' filas de datos.'); muestra(rows); } catch (e) { log('No se pudo leer la hoja: ' + e.message); } };
+$('#enviar').onclick = async () => {
+  const id = 'prueba-' + Date.now(), n = Number($('#tam').value), datos = ('{"nota":"' + 'x'.repeat(Math.max(0, n - 11)) + '"}').slice(0, n);
+  const cuerpo = new URLSearchParams(); cuerpo.set(ENTRY.id, id); cuerpo.set(ENTRY.tipo, 'prueba'); cuerpo.set(ENTRY.datos, datos);
+  const t0 = Date.now(); $('#log').textContent = ''; $('#estado').textContent = 'Enviando ' + id + ' (' + n + ' caracteres)…';
+  try { await fetch(FORM, {method: 'POST', mode: 'no-cors', body: cuerpo}); log('Envío hecho (Google no confirma por sí mismo). id = ' + id); }
+  catch (e) { $('#estado').innerHTML = '<span class="bad">No se pudo enviar: ' + e.message + '</span>'; return log('Falló el envío: ' + e.message); }
+  $('#estado').textContent = 'Enviado. Esperando que aparezca en la hoja publicada (máximo 8 minutos)…';
+  for (let k = 1; k <= 32; k++) {
+    await new Promise(ok => setTimeout(ok, 15000));
+    try {
+      const rows = await leer(), enc = rows[0] || [], col = enc.indexOf('id'), fila = rows.find(r => r.includes(id));
+      log('Intento ' + k + ': ' + (rows.length - 1) + ' filas en la hoja' + (fila ? ' — APARECIÓ' : ' — todavía no'));
+      if (fila) {
+        const seg = Math.round((Date.now() - t0) / 1000), pos = {id: fila.indexOf(id), tipo: fila.indexOf('prueba'), datos: fila.findIndex(c => c.startsWith('{"nota"'))};
+        const bien = enc[pos.id] === 'id' && enc[pos.tipo] === 'tipo' && enc[pos.datos] === 'datos', largo = (fila[pos.datos] || '').length;
+        $('#estado').innerHTML = '<span class="ok">Apareció a los ' + seg + ' segundos.</span> Columnas: ' + (bien ? '<span class="ok">cada dato cayó en su columna (id, tipo, datos).</span>' : '<span class="bad">ojo: los datos no cayeron en las columnas esperadas (' + enc[pos.id] + ', ' + enc[pos.tipo] + ', ' + enc[pos.datos] + ').</span>') +
+          ' Datos recibidos: ' + largo + ' de ' + n + ' caracteres' + (largo === n ? '' : ' <span class="bad">(se recortó)</span>') + '.';
+        muestra(rows); return;
+      }
+    } catch (e) { log('Intento ' + k + ': no se pudo leer la hoja (' + e.message + ')'); }
+  }
+  $('#estado').innerHTML = '<span class="bad">No apareció en 8 minutos.</span> Revisa en la hoja de respuestas del formulario si llegó; si llegó, el problema es la publicación; si no, el envío.';
+};
+</script>
+</body>
+</html>
