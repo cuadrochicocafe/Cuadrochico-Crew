@@ -9,5 +9,6 @@ window.USUARIOS = [
 {"n":"Diego","r":"Barista","s":"BCjuvLlJ6cqh2wbbcEIzIg==","h":"A9+CCsXYegY1pjS86d750BBC5kWsAC0YuWC4V4l74f0=","i":100000},
 {"n":"Hector","r":"Barista","s":"9zwrrLWQME9xvKYIlq40Tg==","h":"YA3bF8qT+Tv1bgs/rxUBcEsWL6KDavJztAjt5o5JmR8=","i":100000},
 {"n":"Sheila","r":"Barista","s":"qNixG3SgHAUH7ajQCWpowg==","h":"kLKYzKtbRLXeAxYaFIPdFas7eL+fyAbEPcKOVK4RRPg=","i":100000},
-{"n":"Gama","r":"Barista","s":"O91OMI1jVfxTubCTMlQllA==","h":"wUd8Wl9nPs/vUkH585sfZ6Kk5tE1gQKiL+5nb8N7LGQ=","i":100000}
+{"n":"Gama","r":"Barista","s":"O91OMI1jVfxTubCTMlQllA==","h":"wUd8Wl9nPs/vUkH585sfZ6Kk5tE1gQKiL+5nb8N7LGQ=","i":100000},
+{"n":"Alejandro","r":"Barista","s":"2JK4DqY/U5vU7iS+C8kWGA==","h":"2XW3RSs60ewNsvU1Y4GImoBNQH9gVUf9LDl6Qfrx2x4=","i":100000}
 ];
