@@ -2,6 +2,7 @@ import menuJson from '../data/menu.json';
 import settingsJson from '../data/settings.json';
 import { MenuSchema, SettingsSchema } from './schema';
 
+export * from './api';
 export * from './pricing';
 export * from './schedule';
 export * from './schema';
