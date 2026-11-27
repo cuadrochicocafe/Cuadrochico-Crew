@@ -1,0 +1,58 @@
+{
+  "businessName": "Cuadrochico · Barra de café",
+  "timezone": "America/Monterrey",
+  "minDrinks": 6,
+  "maxDrinks": 200,
+  "leadTimeHours": 48,
+  "maxDaysAhead": 60,
+  "slotMinutes": 30,
+  "capacity": {
+    "drinksPerSlot": 48,
+    "drinksPerDay": 150
+  },
+  "hours": {
+    "mon": [["08:00", "21:00"]],
+    "tue": [["08:00", "21:00"]],
+    "wed": [["08:00", "21:00"]],
+    "thu": [["08:00", "21:00"]],
+    "fri": [["08:00", "21:00"]],
+    "sat": [["09:00", "20:00"]],
+    "sun": [["09:00", "20:00"]]
+  },
+  "closedDates": ["2026-12-25", "2027-01-01"],
+  "discountTiers": [
+    { "minDrinks": 6, "percent": 5 },
+    { "minDrinks": 12, "percent": 10 },
+    { "minDrinks": 24, "percent": 15 }
+  ],
+  "depositPercent": 50,
+  "unpaidHoldHours": 12,
+  "fulfillment": {
+    "pickup": {
+      "enabled": true,
+      "address": "Av. Fundadores 5296, Torre Elysium, Col. Miguel Hidalgo, Monterrey, N.L.",
+      "mapsUrl": "https://maps.google.com/?q=Cuadrochico+Barra+de+caf%C3%A9+Av.+Fundadores+5296+Monterrey"
+    },
+    "delivery": {
+      "enabled": false,
+      "feeCents": 0,
+      "minDrinks": 12,
+      "note": "Entregamos en la zona cercana a la cafetería. Te confirmamos el costo de envío por WhatsApp."
+    }
+  },
+  "payments": {
+    "transfer": {
+      "enabled": true,
+      "bank": "POR CONFIGURAR",
+      "beneficiary": "POR CONFIGURAR",
+      "clabe": "000000000000000000"
+    },
+    "mercadopago": {
+      "enabled": true
+    }
+  },
+  "contact": {
+    "whatsapp": "",
+    "instagram": "cuadrochicocafe"
+  }
+}

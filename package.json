@@ -1,0 +1,23 @@
+{
+  "name": "cuadrochico",
+  "private": true,
+  "description": "Cuadrochico · herramientas internas y pedidos de mayoreo",
+  "type": "module",
+  "workspaces": ["packages/*", "apps/*"],
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "dev": "npm run dev -w @cuadrochico/web",
+    "dev:api": "npm run dev -w @cuadrochico/api",
+    "build": "npm run build -w @cuadrochico/web",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "check": "npm run lint && npm run typecheck && npm run test",
+    "deploy": "npm run build && npm run deploy -w @cuadrochico/api"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.0.0",
+    "typescript": "^5.9.0"
+  }
+}
