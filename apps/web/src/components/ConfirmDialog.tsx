@@ -15,7 +15,15 @@ interface Props {
  * Diálogo modal accesible sin `<dialog>` (no existe en Safari viejo):
  * enfoca el botón seguro, atrapa Tab, cierra con Esc y devuelve el foco a quien lo abrió.
  */
-export function ConfirmDialog({ title, children, confirmLabel, cancelLabel, busy, onConfirm, onClose }: Props) {
+export function ConfirmDialog({
+  title,
+  children,
+  confirmLabel,
+  cancelLabel,
+  busy,
+  onConfirm,
+  onClose,
+}: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
 

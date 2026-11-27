@@ -1,4 +1,10 @@
-import { type DayAvailability, leadTimeMessage, type SlotProblem, type Settings, slotProblemMessage } from '@cuadrochico/core';
+import {
+  type DayAvailability,
+  leadTimeMessage,
+  type Settings,
+  type SlotProblem,
+  slotProblemMessage,
+} from '@cuadrochico/core';
 import { useState } from 'preact/hooks';
 import { focusSoon, formatLocalDate } from '../lib';
 
@@ -26,7 +32,17 @@ function reasons(problems: (SlotProblem | undefined)[], settings: Settings, drin
   return [...set].map((p) => slotProblemMessage(p, settings, drinks));
 }
 
-export function DateStep({ settings, drinks, availability, notices, slot, onSlot, onRetry, onBack, onContinue }: Props) {
+export function DateStep({
+  settings,
+  drinks,
+  availability,
+  notices,
+  slot,
+  onSlot,
+  onRetry,
+  onBack,
+  onContinue,
+}: Props) {
   const [error, setError] = useState<string | null>(null);
   const [pickedDate, setPickedDate] = useState<string | null>(slot?.date ?? null);
   const days = availability.status === 'ready' ? availability.days : [];
@@ -88,7 +104,9 @@ export function DateStep({ settings, drinks, availability, notices, slot, onSlot
                     />
                     <span>
                       <span class="dow">{formatLocalDate(d.date, { day: undefined, month: undefined })}</span>{' '}
-                      <span class="dnum">{formatLocalDate(d.date, { weekday: undefined, month: 'short' })}</span>
+                      <span class="dnum">
+                        {formatLocalDate(d.date, { weekday: undefined, month: 'short' })}
+                      </span>
                     </span>
                   </label>
                 );

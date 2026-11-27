@@ -1,4 +1,11 @@
-import { chargeFor, formatMXN, nonRefundableNotice, type PaymentPlan, type Quote, type Settings } from '@cuadrochico/core';
+import {
+  chargeFor,
+  formatMXN,
+  nonRefundableNotice,
+  type PaymentPlan,
+  type Quote,
+  type Settings,
+} from '@cuadrochico/core';
 import { useState } from 'preact/hooks';
 import { CancellationPolicy } from '../components/CancellationPolicy';
 import { Lines } from '../components/Lines';
@@ -21,7 +28,18 @@ interface Props {
   onContinue: () => void;
 }
 
-export function ReviewStep({ settings, quote, slot, draft, plan, onPlan, onEdit, now, onBack, onContinue }: Props) {
+export function ReviewStep({
+  settings,
+  quote,
+  slot,
+  draft,
+  plan,
+  onPlan,
+  onEdit,
+  now,
+  onBack,
+  onContinue,
+}: Props) {
   const [error, setError] = useState<string | null>(null);
   const notice = nonRefundableNotice(slot, now ?? new Date(), settings);
   const deposit = chargeFor(quote, 'deposit');
@@ -80,14 +98,26 @@ export function ReviewStep({ settings, quote, slot, draft, plan, onPlan, onEdit,
       <fieldset class="card plans" aria-describedby={error ? 'plan-error' : undefined}>
         <legend>¿Cuánto quieres pagar ahora?</legend>
         <label class="choice">
-          <input type="radio" name="plan" value="deposit" checked={plan === 'deposit'} onChange={() => onPlan('deposit')} />
+          <input
+            type="radio"
+            name="plan"
+            value="deposit"
+            checked={plan === 'deposit'}
+            onChange={() => onPlan('deposit')}
+          />
           <span>
-            <strong>Anticipo del {settings.depositPercent} %</strong>: pagas {formatMXN(deposit.dueNowCents)} ahora y{' '}
-            {formatMXN(deposit.balanceCents)} al recoger.
+            <strong>Anticipo del {settings.depositPercent} %</strong>: pagas {formatMXN(deposit.dueNowCents)}{' '}
+            ahora y {formatMXN(deposit.balanceCents)} al recoger.
           </span>
         </label>
         <label class="choice">
-          <input type="radio" name="plan" value="full" checked={plan === 'full'} onChange={() => onPlan('full')} />
+          <input
+            type="radio"
+            name="plan"
+            value="full"
+            checked={plan === 'full'}
+            onChange={() => onPlan('full')}
+          />
           <span>
             <strong>Liquidar el 100 %</strong>: pagas {formatMXN(full.dueNowCents)} ahora y nada al recoger.
           </span>

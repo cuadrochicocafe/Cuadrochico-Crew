@@ -30,7 +30,11 @@ const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 /** Valida con los mismos esquemas de core que usa el servidor. */
 export function validateCustomer(d: CustomerDraft): CustomerErrors {
   const errors: CustomerErrors = {};
-  const customer = OrderInputSchema.shape.customer.safeParse({ name: d.name, phone: d.phone, email: d.email });
+  const customer = OrderInputSchema.shape.customer.safeParse({
+    name: d.name,
+    phone: d.phone,
+    email: d.email,
+  });
   if (!customer.success)
     for (const issue of customer.error.issues) {
       const key = issue.path[0] as Field;
@@ -86,7 +90,9 @@ export function DataStep({ settings, draft, onDraft, onBack, onContinue }: Props
         value={draft[k]}
         onInput={set(k)}
         aria-invalid={errors[k] ? true : undefined}
-        aria-describedby={[hint ? `f-${k}-hint` : '', errors[k] ? `f-${k}-error` : ''].join(' ').trim() || undefined}
+        aria-describedby={
+          [hint ? `f-${k}-hint` : '', errors[k] ? `f-${k}-error` : ''].join(' ').trim() || undefined
+        }
         {...props}
       />
       {errors[k] && (
@@ -139,7 +145,12 @@ export function DataStep({ settings, draft, onDraft, onBack, onContinue }: Props
                 {field('address', 'Dirección completa', { autoComplete: 'street-address', maxLength: 300 })}
                 <div class="field">
                   <label for="f-references">Referencias (opcional)</label>
-                  <input id="f-references" value={draft.references} onInput={set('references')} maxLength={300} />
+                  <input
+                    id="f-references"
+                    value={draft.references}
+                    onInput={set('references')}
+                    maxLength={300}
+                  />
                 </div>
               </>
             )}

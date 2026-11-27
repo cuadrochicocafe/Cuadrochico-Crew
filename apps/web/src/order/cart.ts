@@ -62,7 +62,8 @@ export function setQty(cart: readonly CartLine[], key: string, qty: number): Car
   return cart.map((l) => (l.key === key ? { ...l, qty: Math.floor(qty) } : l));
 }
 
-export const drinkCount = (cart: readonly Pick<OrderLineInput, 'qty'>[]) => cart.reduce((s, l) => s + l.qty, 0);
+export const drinkCount = (cart: readonly Pick<OrderLineInput, 'qty'>[]) =>
+  cart.reduce((s, l) => s + l.qty, 0);
 
 export const toOrderLines = (cart: readonly CartLine[]): OrderLineInput[] =>
   cart.map(({ itemId, variantId, options, qty }) => ({ itemId, variantId, options, qty }));
@@ -93,7 +94,11 @@ export function nextTierHint(q: Pick<Quote, 'nextTier'>): string | null {
  * Si cambió la anticipación (p. ej. de 24 a 25 bebidas) desde la última vez que se cargaron las fechas,
  * explica por qué cambiaron las fechas disponibles. `null` si no hay nada que avisar.
  */
-export function leadTimeChangeNotice(prevDrinks: number | null, drinks: number, settings: Settings): string | null {
+export function leadTimeChangeNotice(
+  prevDrinks: number | null,
+  drinks: number,
+  settings: Settings,
+): string | null {
   if (prevDrinks === null) return null;
   const before = leadTimeHoursFor(prevDrinks, settings);
   const after = leadTimeHoursFor(drinks, settings);

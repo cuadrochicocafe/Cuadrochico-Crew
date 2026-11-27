@@ -10,7 +10,16 @@ import {
 import { useState } from 'preact/hooks';
 import { Totals } from '../components/Totals';
 import { focusSoon } from '../lib';
-import { type CartLine, type CartQuote, addLine, defaultOptions, drinkCount, nextTierHint, normalizeOptions, setQty } from './cart';
+import {
+  addLine,
+  type CartLine,
+  type CartQuote,
+  defaultOptions,
+  drinkCount,
+  nextTierHint,
+  normalizeOptions,
+  setQty,
+} from './cart';
 
 interface Props {
   menu: Menu;
@@ -38,8 +47,8 @@ export function BuildStep({ menu, settings, cart, cartQuote, onCart, onContinue 
   return (
     <>
       <p class="lead">
-        Todas nuestras bebidas se entregan <span class="hand">bien frías</span>. Mínimo {settings.minDrinks} bebidas;
-        entre más pidas, más descuento.
+        Todas nuestras bebidas se entregan <span class="hand">bien frías</span>. Mínimo {settings.minDrinks}{' '}
+        bebidas; entre más pidas, más descuento.
       </p>
       <ul class="discounts" aria-label="Descuentos por número de bebidas">
         {settings.discountTiers.map((t) => (
@@ -107,7 +116,15 @@ export function BuildStep({ menu, settings, cart, cartQuote, onCart, onContinue 
   );
 }
 
-function ItemCard({ menu, item, onAdd }: { menu: Menu; item: MenuItem; onAdd: (l: Omit<CartLine, 'key'>) => void }) {
+function ItemCard({
+  menu,
+  item,
+  onAdd,
+}: {
+  menu: Menu;
+  item: MenuItem;
+  onAdd: (l: Omit<CartLine, 'key'>) => void;
+}) {
   const firstVariant = item.variants[0]?.id ?? '';
   const [variantId, setVariantId] = useState(firstVariant);
   const [options, setOptions] = useState(() => defaultOptions(menu, item, firstVariant));
@@ -218,7 +235,12 @@ function CartRow({ menu, line, onQty }: { menu: Menu; line: CartLine; onQty: (qt
         {detail && <span class="muted"> · {detail}</span>}
       </div>
       <div class="stepper">
-        <button type="button" class="btn small" aria-label={`Quitar una: ${label}`} onClick={() => onQty(line.qty - 1)}>
+        <button
+          type="button"
+          class="btn small"
+          aria-label={`Quitar una: ${label}`}
+          onClick={() => onQty(line.qty - 1)}
+        >
           −
         </button>
         <label class="sr-only" for={id}>
@@ -233,7 +255,12 @@ function CartRow({ menu, line, onQty }: { menu: Menu; line: CartLine; onQty: (qt
           value={line.qty}
           onChange={(e) => onQty(Number((e.target as HTMLInputElement).value))}
         />
-        <button type="button" class="btn small" aria-label={`Agregar una: ${label}`} onClick={() => onQty(line.qty + 1)}>
+        <button
+          type="button"
+          class="btn small"
+          aria-label={`Agregar una: ${label}`}
+          onClick={() => onQty(line.qty + 1)}
+        >
           +
         </button>
         <button type="button" class="btn small link" onClick={() => onQty(0)}>

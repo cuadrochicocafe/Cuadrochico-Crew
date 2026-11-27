@@ -2,7 +2,15 @@ import { chargeFor, formatMXN, type PaymentPlan, type Quote } from '@cuadrochico
 import { plural } from '../lib';
 
 /** Total, descuento y opciones de pago. Se muestra desde el primer paso, antes de pedir cualquier dato. */
-export function Totals({ quote, depositPercent, plan }: { quote: Quote; depositPercent: number; plan?: PaymentPlan | null }) {
+export function Totals({
+  quote,
+  depositPercent,
+  plan,
+}: {
+  quote: Quote;
+  depositPercent: number;
+  plan?: PaymentPlan | null;
+}) {
   const deposit = chargeFor(quote, 'deposit');
   const chosen = plan ? chargeFor(quote, plan) : null;
   return (
@@ -39,8 +47,8 @@ export function Totals({ quote, depositPercent, plan }: { quote: Quote; depositP
         <div class="muted">
           <dt>Anticipo del {depositPercent} %</dt>
           <dd>
-            {formatMXN(deposit.dueNowCents)} ahora y {formatMXN(deposit.balanceCents)} al recoger, o liquidas el
-            total. Tú eliges antes de pagar.
+            {formatMXN(deposit.dueNowCents)} ahora y {formatMXN(deposit.balanceCents)} al recoger, o liquidas
+            el total. Tú eliges antes de pagar.
           </dd>
         </div>
       )}

@@ -77,7 +77,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   try {
     res = await fetch(path, {
       ...init,
-      headers: { Accept: 'application/json', ...(init?.body ? { 'Content-Type': 'application/json' } : {}), ...init?.headers },
+      headers: {
+        Accept: 'application/json',
+        ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+        ...init?.headers,
+      },
     });
   } catch {
     throw new ApiRequestError(0, { error: 'internal', message: NETWORK_MESSAGE });
@@ -91,7 +95,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (!res.ok) {
     throw new ApiRequestError(
       res.status,
-      isApiError(body) ? body : { error: 'internal', message: 'Algo falló de nuestro lado. Inténtalo de nuevo en un momento.' },
+      isApiError(body)
+        ? body
+        : { error: 'internal', message: 'Algo falló de nuestro lado. Inténtalo de nuevo en un momento.' },
     );
   }
   return body as T;
@@ -111,7 +117,8 @@ export const api = {
   availability: (drinks: number) => request<AvailabilityResponse>(`/api/availability${q({ drinks })}`),
   createOrder: (body: CreateOrderRequest) =>
     request<CreateOrderResponse>('/api/orders', { method: 'POST', body: JSON.stringify(body) }),
-  order: (code: string, token: string) => request<OrderResponse>(`/api/orders/${enc(code)}${q({ t: token })}`),
+  order: (code: string, token: string) =>
+    request<OrderResponse>(`/api/orders/${enc(code)}${q({ t: token })}`),
   cancelOrder: (code: string, token: string) =>
     request<OrderResponse>(`/api/orders/${enc(code)}/cancel${q({ t: token })}`, { method: 'POST' }),
 };
