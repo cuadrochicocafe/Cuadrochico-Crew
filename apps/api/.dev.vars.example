@@ -1,0 +1,26 @@
+# Copia este archivo a .dev.vars (ignorado por git) para desarrollo local.
+# En producción: `pnpm exec wrangler secret put NOMBRE` desde apps/api.
+# Cualquier secreto que falte desactiva su función sin romper nada.
+
+# Administración (Authorization: Bearer <ADMIN_TOKEN>). Usa un valor largo y aleatorio.
+ADMIN_TOKEN=cambia-esto-por-un-token-largo-y-aleatorio
+
+# Mercado Pago Checkout Pro. Si falta alguno, Mercado Pago aparece desactivado en /api/catalog.
+MP_ACCESS_TOKEN=TEST-0000000000000000-000000-00000000000000000000000000000000-000000000
+MP_WEBHOOK_SECRET=secreto-de-la-firma-del-webhook
+
+# Transferencia SPEI. Si falta alguno, la transferencia aparece desactivada en /api/catalog.
+TRANSFER_BANK=Banco de ejemplo
+TRANSFER_BENEFICIARY=Nombre del titular
+TRANSFER_CLABE=000000000000000000
+
+# Avisos al equipo por Telegram.
+TELEGRAM_BOT_TOKEN=000000000:token-del-bot
+TELEGRAM_CHAT_ID=-1000000000000
+
+# Cloudflare Turnstile (anti-bots). Si falta, no se exige captcha.
+TURNSTILE_SECRET=1x0000000000000000000000000000000AA
+
+# Google Calendar: JSON de la cuenta de servicio en una sola línea, y el id del calendario compartido.
+GOOGLE_SERVICE_ACCOUNT_JSON={"client_email":"pedidos@proyecto.iam.gserviceaccount.com","private_key":"-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"}
+GOOGLE_CALENDAR_ID=calendario-del-equipo@group.calendar.google.com

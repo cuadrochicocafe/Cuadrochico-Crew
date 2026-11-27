@@ -1,0 +1,23 @@
+{
+  "name": "@cuadrochico/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "API de pedidos de mayoreo: Cloudflare Worker (Hono) + D1. También sirve apps/web/dist.",
+  "scripts": {
+    "dev": "wrangler d1 migrations apply DB --local && wrangler dev",
+    "deploy": "wrangler d1 migrations apply DB --remote && wrangler deploy",
+    "typecheck": "tsc -p .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@cuadrochico/core": "workspace:*",
+    "hono": "^4.13.19"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "^1.8.5",
+    "@cloudflare/workers-types": "^5.20261119.1",
+    "vitest": "^4.1.12",
+    "wrangler": "^4.165.0"
+  }
+}
