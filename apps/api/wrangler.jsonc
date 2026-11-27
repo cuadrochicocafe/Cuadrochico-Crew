@@ -15,8 +15,8 @@
     {
       "binding": "DB",
       "database_name": "cuadrochico-pedidos",
-      // Reemplaza con el id que da `wrangler d1 create cuadrochico-pedidos`.
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      // Id de `wrangler d1 create cuadrochico-pedidos` (no es secreto).
+      "database_id": "13e03792-6134-4512-995f-0af961f440a6",
       "migrations_dir": "migrations"
     }
   ],
