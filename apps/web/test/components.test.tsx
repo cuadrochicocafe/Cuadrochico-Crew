@@ -5,23 +5,23 @@ import {
   NON_REFUNDABLE_NOTICE,
   type PublicOrder,
   type Quote,
+  type Settings,
   defaultSettings as settings,
 } from '@cuadrochico/core';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/preact';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { addLine, quoteCart } from '../src/order/cart';
-import { EMPTY_CUSTOMER } from '../src/order/DataStep';
-import { DateStep } from '../src/order/DateStep';
-import { DRAFT_KEY, OrderFlow } from '../src/order/OrderFlow';
-import { PaymentStep } from '../src/order/PaymentStep';
-import { ReviewStep } from '../src/order/ReviewStep';
 import { AdminPage } from '../src/pages/AdminPage';
 import { OrderView } from '../src/pages/OrderPage';
+import { Checkout } from '../src/shop/Checkout';
+import { EMPTY_CUSTOMER } from '../src/shop/customer';
+import { DRAFT_KEY, ShopFlow } from '../src/shop/ShopFlow';
 
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   sessionStorage.clear();
+  history.replaceState(null, '', '/');
 });
 
 function makeQuote(qty = 12): Quote {
@@ -38,23 +38,47 @@ const now = new Date('2026-12-01T12:00:00-06:00');
 const farSlot = { date: '2026-12-15', time: '10:00' };
 const nearSlot = { date: '2026-12-03', time: '18:00' };
 const draft = { ...EMPTY_CUSTOMER, name: 'Ana López', phone: '8112345678' };
+const days = [
+  { date: '2026-12-02', slots: [], problem: 'too_soon' as const },
+  { date: '2026-12-03', slots: [{ time: '18:00', remaining: null, available: true }] },
+  { date: '2026-12-15', slots: [{ time: '10:00', remaining: null, available: true }] },
+  { date: '2026-12-25', slots: [], problem: 'closed' as const },
+];
 
-function renderReview(slot = farSlot, onContinue = vi.fn()) {
-  return render(
-    <ReviewStep
-      settings={settings}
-      quote={makeQuote()}
-      slot={slot}
-      draft={draft}
-      plan={null}
-      onPlan={vi.fn()}
-      onEdit={vi.fn()}
-      onBack={vi.fn()}
-      onContinue={onContinue}
-      now={now}
-    />,
-  );
+function renderCheckout(over: Partial<Parameters<typeof Checkout>[0]> = {}) {
+  const props: Parameters<typeof Checkout>[0] = {
+    settings,
+    quote: makeQuote(),
+    drinks: 12,
+    availability: { status: 'ready', days },
+    notices: [],
+    onRetryAvailability: vi.fn(),
+    slot: farSlot,
+    onSlot: vi.fn(),
+    draft,
+    onDraft: vi.fn(),
+    plan: null,
+    onPlan: vi.fn(),
+    method: null,
+    onMethod: vi.fn(),
+    submitting: false,
+    submitError: null,
+    onSubmit: vi.fn(),
+    onEditCart: vi.fn(),
+    onBack: vi.fn(),
+    now,
+    ...over,
+  };
+  return { ...render(<Checkout {...props} />), props };
 }
+
+const withPayments = (transfer: boolean, mercadopago: boolean): Settings => ({
+  ...settings,
+  payments: {
+    transfer: { ...settings.payments.transfer, enabled: transfer },
+    mercadopago: { enabled: mercadopago },
+  },
+});
 
 function order(
   cancellation: PublicOrder['cancellation'],
@@ -80,39 +104,163 @@ function order(
 
 const cancellable = { refundable: true, deadline: '2026-12-12T16:00:00Z', canCancelNow: true };
 
-describe('revisión antes de pagar', () => {
-  it('muestra la política con el texto de core', () => {
-    renderReview();
+describe('checkout', () => {
+  it('muestra la política completa con el texto de core', () => {
+    renderCheckout();
     expect(screen.getByTestId('cancellation-policy').textContent).toBe(cancellationPolicyText(settings));
   });
 
-  it('avisa que no es reembolsable si falta menos de 72 h', () => {
-    renderReview(nearSlot);
+  it('avisa que no es reembolsable si falta menos de 72 h, y no si hay tiempo', () => {
+    renderCheckout({ slot: nearSlot });
     expect(screen.getByTestId('non-refundable').textContent).toContain(NON_REFUNDABLE_NOTICE);
-  });
-
-  it('no muestra el aviso si hay tiempo para cancelar', () => {
-    renderReview(farSlot);
+    cleanup();
+    renderCheckout({ slot: farSlot });
     expect(screen.queryByTestId('non-refundable')).toBeNull();
   });
 
-  it('no deja continuar sin elegir anticipo o liquidación, y nada viene marcado', () => {
-    const onContinue = vi.fn();
-    renderReview(farSlot, onContinue);
-    for (const r of screen.getAllByRole('radio')) expect((r as HTMLInputElement).checked).toBe(false);
-    fireEvent.click(screen.getByRole('button', { name: 'Ir al pago' }));
-    expect(onContinue).not.toHaveBeenCalled();
-    expect(screen.getByRole('alert').textContent).toContain('anticipo');
+  it('no preselecciona plan ni forma de pago y no deja confirmar sin plan', () => {
+    const { props } = renderCheckout();
+    for (const name of [/Anticipo/, /Liquidar todo/, /Transferencia/, /Mercado Pago/])
+      expect((screen.getByRole('radio', { name }) as HTMLInputElement).checked).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar pedido' }));
+    expect(props.onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByText('Elige anticipo o liquidar todo.')).toBeTruthy();
+    expect(screen.getByText('Elige cómo quieres pagar.')).toBeTruthy();
+  });
+
+  it('con todo completo envía el pedido y muestra lo que se paga ahora', () => {
+    const quote = makeQuote();
+    const { props } = renderCheckout({ quote, plan: 'full', method: 'transfer' });
+    expect(document.querySelector('.pay-bar')?.textContent).toContain('Pagas ahora');
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar pedido' }));
+    expect(props.onSubmit).toHaveBeenCalledOnce();
+  });
+
+  it('pide los datos con los mismos mensajes de core', () => {
+    const { props } = renderCheckout({ draft: EMPTY_CUSTOMER, plan: 'deposit', method: 'transfer' });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar pedido' }));
+    expect(props.onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('Nombre').getAttribute('aria-invalid')).toBe('true');
+  });
+
+  it('muestra la anticipación según el tamaño y el aviso de cambio', () => {
+    renderCheckout({ drinks: 24 });
+    expect(screen.getByText(leadTimeMessage(24, settings))).toBeTruthy();
+    cleanup();
+    renderCheckout({ drinks: 25, notices: ['Cambiaron las fechas disponibles.'] });
+    expect(screen.getByText(leadTimeMessage(25, settings))).toBeTruthy();
+    expect(screen.getByText('Cambiaron las fechas disponibles.').getAttribute('role')).toBe('status');
+  });
+
+  it('las fechas no disponibles se ven deshabilitadas con su razón y sin urgencia', () => {
+    renderCheckout({ slot: null });
+    const dates = screen
+      .getAllByRole('radio')
+      .filter((r) => (r as HTMLInputElement).name === 'date') as HTMLInputElement[];
+    expect(dates[0]?.disabled).toBe(true);
+    expect(dates[1]?.disabled).toBe(false);
+    expect(document.body.textContent).toContain('Días sin elegir: Ese día no hacemos entregas.');
+    // La anticipación se explica una sola vez, no también como razón de cada día.
+    expect(screen.getAllByText(leadTimeMessage(12, settings))).toHaveLength(1);
+    expect(document.body.textContent).not.toMatch(/quedan/i);
+  });
+
+  it('oculta las formas de pago desactivadas', () => {
+    renderCheckout({ settings: withPayments(true, false) });
+    expect(screen.getByRole('radio', { name: /Transferencia/ })).toBeTruthy();
+    expect(screen.queryByRole('radio', { name: /Mercado Pago/ })).toBeNull();
+  });
+
+  it('sin formas de pago ofrece pedir por chat en lugar de pagar', () => {
+    renderCheckout({ settings: withPayments(false, false) });
+    expect(screen.queryByRole('button', { name: 'Confirmar pedido' })).toBeNull();
+    expect(document.body.innerHTML).toContain('instagram.com');
+  });
+});
+
+describe('tienda', () => {
+  const addTonic = async () => {
+    fireEvent.click(screen.getByRole('button', { name: /^Cold Brew Tonic/ }));
+    const sheet = screen.getByRole('dialog');
+    // Sin nada en el carrito, el contador empieza en el mínimo.
+    fireEvent.click(within(sheet).getByRole('button', { name: /^Agregar 6/ }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  };
+
+  it('muestra el catálogo, agrega desde la hoja y el total aparece antes de pedir datos', async () => {
+    render(<ShopFlow menu={menu} settings={settings} />);
+    expect(screen.queryByRole('button', { name: /Ver pedido/ })).toBeNull();
+    await addTonic();
+    const bar = screen.getByRole('button', { name: /Ver pedido/ });
+    expect(bar.textContent).toContain('$');
+    expect(screen.queryByLabelText('Nombre')).toBeNull();
+    expect(document.body.textContent).toContain('agrega 6 y obtén 10 %');
+  });
+
+  it('el carrito no deja continuar debajo del mínimo', async () => {
+    render(<ShopFlow menu={menu} settings={settings} />);
+    fireEvent.click(screen.getByRole('button', { name: /^Cold Brew Tonic/ }));
+    const sheet = screen.getByRole('dialog');
+    fireEvent.click(within(sheet).getByRole('button', { name: /Una menos/ }));
+    fireEvent.click(within(sheet).getByRole('button', { name: /^Agregar 5/ }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    fireEvent.click(screen.getByRole('button', { name: /Ver pedido/ }));
+    const cart = screen.getByRole('dialog');
+    const go = within(cart).getByRole('button', { name: /mínimo/ }) as HTMLButtonElement;
+    expect(go.disabled).toBe(true);
+  });
+
+  it('el borrador sobrevive a una recarga de la pestaña', async () => {
+    const first = render(<ShopFlow menu={menu} settings={settings} />);
+    await addTonic();
+    expect(sessionStorage.getItem(DRAFT_KEY)).toContain('"qty":6');
+    first.unmount();
+    render(<ShopFlow menu={menu} settings={settings} />);
+    expect(screen.getByRole('button', { name: /Ver pedido/ })).toBeTruthy();
+  });
+
+  it('el botón atrás del navegador cierra la hoja abierta', async () => {
+    render(<ShopFlow menu={menu} settings={settings} />);
+    fireEvent.click(screen.getByRole('button', { name: /^Matcha Latte/ }));
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect((history.state as { sheet: string }).sheet).toBe('item:matcha-latte');
+    window.dispatchEvent(new PopStateEvent('popstate', { state: { view: 'menu', sheet: null } }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  it('del carrito pasa al checkout en una sola página', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ days }), { headers: { 'content-type': 'application/json' } }),
+      ),
+    );
+    render(<ShopFlow menu={menu} settings={settings} />);
+    await addTonic();
+    fireEvent.click(screen.getByRole('button', { name: /Ver pedido/ }));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /^Continuar/ }));
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Finaliza tu pedido' })).toBeTruthy());
+    expect(screen.getByLabelText('Nombre')).toBeTruthy();
+    expect(screen.getByRole('radio', { name: /Anticipo/ })).toBeTruthy();
   });
 });
 
 describe('página del pedido', () => {
-  it('la política es idéntica a la de la revisión', () => {
-    const review = renderReview();
-    const reviewText = review.getByTestId('cancellation-policy').textContent;
+  it('la política es idéntica a la del checkout', () => {
+    renderCheckout();
+    const checkoutText = screen.getByTestId('cancellation-policy').textContent;
     cleanup();
     render(<OrderView settings={settings} order={order(cancellable)} payment={null} onCancel={vi.fn()} />);
-    expect(screen.getByTestId('cancellation-policy').textContent).toBe(reviewText);
+    expect(screen.getByTestId('cancellation-policy').textContent).toBe(checkoutText);
+  });
+
+  it('muestra el avance del pedido', () => {
+    render(
+      <OrderView settings={settings} order={order(cancellable, 'ready')} payment={null} onCancel={vi.fn()} />,
+    );
+    const steps = within(screen.getByRole('list', { name: 'Avance del pedido' })).getAllByRole('listitem');
+    expect(steps.map((s) => s.className)).toEqual(['done', 'done', 'done', 'next']);
   });
 
   it('muestra "Cancelar pedido" solo si canCancelNow', () => {
@@ -171,132 +319,6 @@ describe('página del pedido', () => {
     fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(onCancel).not.toHaveBeenCalled();
-  });
-});
-
-describe('fecha y hora', () => {
-  const props = {
-    settings,
-    availability: {
-      status: 'ready' as const,
-      days: [
-        { date: '2026-12-02', slots: [], problem: 'too_soon' as const },
-        { date: '2026-12-10', slots: [{ time: '10:00', remaining: null, available: true }] },
-      ],
-    },
-    slot: null,
-    onSlot: vi.fn(),
-    onRetry: vi.fn(),
-    onBack: vi.fn(),
-    onContinue: vi.fn(),
-  };
-
-  it('muestra la anticipación según el tamaño y el aviso de cambio', () => {
-    const { rerender } = render(<DateStep {...props} drinks={24} notices={[]} />);
-    expect(screen.getByText(leadTimeMessage(24, settings))).toBeTruthy();
-    rerender(<DateStep {...props} drinks={25} notices={['Cambiaron las fechas disponibles.']} />);
-    expect(screen.getAllByText(leadTimeMessage(25, settings)).length).toBeGreaterThan(0);
-    expect(screen.getByRole('status').textContent).toBe('Cambiaron las fechas disponibles.');
-  });
-
-  it('las fechas no disponibles se ven deshabilitadas con su razón y sin urgencia', () => {
-    render(<DateStep {...props} drinks={12} notices={[]} />);
-    const radios = screen.getAllByRole('radio') as HTMLInputElement[];
-    expect(radios[0]?.disabled).toBe(true);
-    expect(radios[1]?.disabled).toBe(false);
-    expect(document.body.textContent).not.toMatch(/quedan/i);
-  });
-});
-
-describe('flujo del pedido', () => {
-  it('no avanza sin bebidas suficientes y muestra el total antes de pedir datos', async () => {
-    render(<OrderFlow menu={menu} settings={settings} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Elegir fecha y hora' }));
-    await waitFor(() => expect(screen.getByRole('alert').textContent).toBeTruthy());
-    expect(screen.getByRole('heading', { level: 2 }).textContent).toContain('Arma tu pedido');
-    expect(screen.queryByLabelText('Nombre')).toBeNull();
-
-    const qty = screen.getAllByLabelText('Cantidad')[0] as HTMLInputElement;
-    fireEvent.input(qty, { target: { value: '6' } });
-    fireEvent.click(screen.getAllByRole('button', { name: 'Agregar' })[0] as HTMLElement);
-    await waitFor(() => expect(screen.getByText('Total')).toBeTruthy());
-    expect(screen.getByText(/Anticipo del 50 %/)).toBeTruthy();
-  });
-
-  const addSix = async () => {
-    const qty = screen.getAllByLabelText('Cantidad')[0] as HTMLInputElement;
-    fireEvent.input(qty, { target: { value: '6' } });
-    fireEvent.click(screen.getAllByRole('button', { name: 'Agregar' })[0] as HTMLElement);
-    await waitFor(() => expect(screen.getByText('Total')).toBeTruthy());
-  };
-
-  it('el borrador sobrevive a una recarga de la pestaña y se guarda en sessionStorage', async () => {
-    const first = render(<OrderFlow menu={menu} settings={settings} />);
-    await addSix();
-    expect(sessionStorage.getItem(DRAFT_KEY)).toContain('"qty":6');
-    first.unmount();
-    render(<OrderFlow menu={menu} settings={settings} />);
-    expect(screen.getByText('Total')).toBeTruthy();
-  });
-
-  it('el botón atrás del navegador regresa al paso anterior', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(
-        async () =>
-          new Response(JSON.stringify({ days: [] }), { headers: { 'content-type': 'application/json' } }),
-      ),
-    );
-    history.replaceState(null, '', '/');
-    render(<OrderFlow menu={menu} settings={settings} />);
-    await addSix();
-    fireEvent.click(screen.getByRole('button', { name: 'Elegir fecha y hora' }));
-    await waitFor(() =>
-      expect(screen.getByRole('heading', { level: 2 }).textContent).not.toContain('Arma tu pedido'),
-    );
-    expect((history.state as { step: string }).step).toBe('date');
-    window.dispatchEvent(new PopStateEvent('popstate', { state: { step: 'build' } }));
-    await waitFor(() =>
-      expect(screen.getByRole('heading', { level: 2 }).textContent).toContain('Arma tu pedido'),
-    );
-  });
-});
-
-describe('pago', () => {
-  const base = {
-    quote: makeQuote(),
-    plan: 'deposit' as const,
-    slot: farSlot,
-    method: null,
-    onMethod: vi.fn(),
-    submitting: false,
-    error: null,
-    onSubmit: vi.fn(),
-    onEdit: vi.fn(),
-    onBack: vi.fn(),
-    now,
-  };
-  const withPayments = (transfer: boolean, mercadopago: boolean) => ({
-    ...settings,
-    payments: {
-      transfer: { ...settings.payments.transfer, enabled: transfer },
-      mercadopago: { enabled: mercadopago },
-    },
-  });
-
-  it('oculta las formas de pago desactivadas y no preselecciona ninguna', () => {
-    render(<PaymentStep {...base} settings={withPayments(true, false)} />);
-    const radios = screen.getAllByRole('radio') as HTMLInputElement[];
-    expect(radios).toHaveLength(1);
-    expect(radios[0]?.checked).toBe(false);
-    fireEvent.click(screen.getByRole('button', { name: /Confirmar y pagar/ }));
-    expect(base.onSubmit).not.toHaveBeenCalled();
-  });
-
-  it('sin formas de pago ofrece pedir por chat en lugar del pago', () => {
-    render(<PaymentStep {...base} settings={withPayments(false, false)} />);
-    expect(screen.queryByRole('button', { name: /Confirmar y pagar/ })).toBeNull();
-    expect(screen.getByRole('link').getAttribute('href')).toContain('instagram.com');
   });
 });
 

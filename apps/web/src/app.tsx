@@ -2,10 +2,10 @@ import type { Menu, Settings } from '@cuadrochico/core';
 import { useEffect, useState } from 'preact/hooks';
 import { api, apiErrorMessage, toApiError } from './api';
 import { contactLink, toCoreSettings } from './lib';
-import { OrderFlow } from './order/OrderFlow';
 import { AdminPage } from './pages/AdminPage';
 import { OrderPage } from './pages/OrderPage';
 import { matchRoute, navigate, useLocation } from './router';
+import { ShopFlow } from './shop/ShopFlow';
 
 type Catalog =
   | { status: 'loading' }
@@ -58,7 +58,7 @@ export function App() {
         )}
         {catalog.status === 'ready' && (
           <>
-            {route.name === 'order-flow' && <OrderFlow menu={catalog.menu} settings={catalog.settings} />}
+            {route.name === 'order-flow' && <ShopFlow menu={catalog.menu} settings={catalog.settings} />}
             {route.name === 'order' && (
               <OrderPage settings={catalog.settings} code={route.code} token={loc.query.get('t') ?? ''} />
             )}
