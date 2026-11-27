@@ -12,7 +12,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { addLine, quoteCart } from '../src/order/cart';
 import { EMPTY_CUSTOMER } from '../src/order/DataStep';
 import { DateStep } from '../src/order/DateStep';
-import { OrderFlow } from '../src/order/OrderFlow';
+import { DRAFT_KEY, OrderFlow } from '../src/order/OrderFlow';
 import { PaymentStep } from '../src/order/PaymentStep';
 import { ReviewStep } from '../src/order/ReviewStep';
 import { AdminPage } from '../src/pages/AdminPage';
@@ -221,6 +221,44 @@ describe('flujo del pedido', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Agregar' })[0] as HTMLElement);
     await waitFor(() => expect(screen.getByText('Total')).toBeTruthy());
     expect(screen.getByText(/Anticipo del 50 %/)).toBeTruthy();
+  });
+
+  const addSix = async () => {
+    const qty = screen.getAllByLabelText('Cantidad')[0] as HTMLInputElement;
+    fireEvent.input(qty, { target: { value: '6' } });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Agregar' })[0] as HTMLElement);
+    await waitFor(() => expect(screen.getByText('Total')).toBeTruthy());
+  };
+
+  it('el borrador sobrevive a una recarga de la pestaña y se guarda en sessionStorage', async () => {
+    const first = render(<OrderFlow menu={menu} settings={settings} />);
+    await addSix();
+    expect(sessionStorage.getItem(DRAFT_KEY)).toContain('"qty":6');
+    first.unmount();
+    render(<OrderFlow menu={menu} settings={settings} />);
+    expect(screen.getByText('Total')).toBeTruthy();
+  });
+
+  it('el botón atrás del navegador regresa al paso anterior', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ days: [] }), { headers: { 'content-type': 'application/json' } }),
+      ),
+    );
+    history.replaceState(null, '', '/');
+    render(<OrderFlow menu={menu} settings={settings} />);
+    await addSix();
+    fireEvent.click(screen.getByRole('button', { name: 'Elegir fecha y hora' }));
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 2 }).textContent).not.toContain('Arma tu pedido'),
+    );
+    expect((history.state as { step: string }).step).toBe('date');
+    window.dispatchEvent(new PopStateEvent('popstate', { state: { step: 'build' } }));
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 2 }).textContent).toContain('Arma tu pedido'),
+    );
   });
 });
 

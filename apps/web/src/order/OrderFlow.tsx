@@ -22,13 +22,46 @@ import { ReviewStep } from './ReviewStep';
 
 type Slot = { date: string; time: string };
 
+/** Borrador del pedido en esta pestaña: sobrevive a una recarga y se borra al cerrar la pestaña o al pedir. */
+export const DRAFT_KEY = 'cc:pedido-borrador';
+interface SavedDraft {
+  cart: CartLine[];
+  slot: Slot | null;
+  draft: CustomerDraft;
+  plan: PaymentPlan | null;
+  method: PaymentMethod | null;
+}
+function loadDraft(): Partial<SavedDraft> {
+  try {
+    const raw = sessionStorage.getItem(DRAFT_KEY);
+    const v: unknown = raw ? JSON.parse(raw) : null;
+    return v && typeof v === 'object' ? (v as Partial<SavedDraft>) : {};
+  } catch {
+    return {};
+  }
+}
+function saveDraft(d: SavedDraft | null): void {
+  try {
+    if (d) sessionStorage.setItem(DRAFT_KEY, JSON.stringify(d));
+    else sessionStorage.removeItem(DRAFT_KEY);
+  } catch {
+    // Sin almacenamiento (modo privado, bloqueado): el pedido funciona igual, solo no se recupera al recargar.
+  }
+}
+
+const isStep = (v: unknown): v is Step => typeof v === 'string' && (STEPS as readonly string[]).includes(v);
+
 export function OrderFlow({ menu, settings }: { menu: Menu; settings: Settings }) {
-  const [step, setStep] = useState<Step>('build');
-  const [cart, setCart] = useState<CartLine[]>([]);
-  const [slot, setSlot] = useState<Slot | null>(null);
-  const [draft, setDraft] = useState<CustomerDraft>(EMPTY_CUSTOMER);
-  const [plan, setPlan] = useState<PaymentPlan | null>(null);
-  const [method, setMethod] = useState<PaymentMethod | null>(null);
+  const [saved] = useState(loadDraft);
+  const [step, setStep] = useState<Step>(() => {
+    const s: unknown = (history.state as { step?: unknown } | null)?.step;
+    return isStep(s) ? s : 'build';
+  });
+  const [cart, setCart] = useState<CartLine[]>(() => (Array.isArray(saved.cart) ? saved.cart : []));
+  const [slot, setSlot] = useState<Slot | null>(saved.slot ?? null);
+  const [draft, setDraft] = useState<CustomerDraft>({ ...EMPTY_CUSTOMER, ...(saved.draft ?? {}) });
+  const [plan, setPlan] = useState<PaymentPlan | null>(saved.plan ?? null);
+  const [method, setMethod] = useState<PaymentMethod | null>(saved.method ?? null);
   const [availability, setAvailability] = useState<AvailabilityState>({ status: 'loading' });
   /** Número de bebidas con el que se cargaron las fechas; si cambia, se vuelven a pedir. */
   const [availDrinks, setAvailDrinks] = useState<number | null>(null);
@@ -93,11 +126,33 @@ export function OrderFlow({ menu, settings }: { menu: Menu; settings: Settings }
     if (current === 'date' && availDrinks !== drinks) loadAvailability(drinks, availDrinks);
   }, [current, drinks]);
 
+  useEffect(() => {
+    if (!submitting) saveDraft({ cart, slot, draft, plan, method });
+  }, [cart, slot, draft, plan, method, submitting]);
+
+  // Cada paso queda en el historial: el botón "atrás" del navegador regresa al paso anterior.
+  useEffect(() => {
+    if (!isStep((history.state as { step?: unknown } | null)?.step))
+      history.replaceState({ step: current }, '', location.href);
+    const onPop = (e: PopStateEvent) => {
+      const s: unknown = (e.state as { step?: unknown } | null)?.step;
+      setSubmitError(null);
+      setStep(isStep(s) ? s : 'build');
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
   const go = (s: Step) => {
     setSubmitError(null);
+    if (s !== current) history.pushState({ step: s }, '', location.href);
     setStep(s);
   };
-  const back = () => go(STEPS[Math.max(0, STEPS.indexOf(current) - 1)] ?? 'build');
+  const back = () => {
+    if (STEPS.indexOf(current) > 0 && isStep((history.state as { step?: unknown } | null)?.step))
+      history.back();
+    else go(STEPS[Math.max(0, STEPS.indexOf(current) - 1)] ?? 'build');
+  };
 
   const submit = async (captchaToken: string | undefined) => {
     if (!slot || !plan || !method) return;
@@ -117,6 +172,7 @@ export function OrderFlow({ menu, settings }: { menu: Menu; settings: Settings }
         notes: draft.notes,
         ...(captchaToken ? { captchaToken } : {}),
       });
+      saveDraft(null);
       const url = `/pedido/${encodeURIComponent(res.order.code)}?t=${encodeURIComponent(res.accessToken)}`;
       if (res.payment.method === 'mercadopago') {
         // La página del pedido queda en el historial para regresar después de pagar.
