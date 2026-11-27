@@ -59,18 +59,31 @@ export const MenuSchema = z
     const groups = new Set(menu.modifierGroups.map((g) => g.id));
     const seen = new Set<string>();
     menu.items.forEach((item, i) => {
-      if (seen.has(item.id)) ctx.addIssue({ code: 'custom', path: ['items', i, 'id'], message: `id repetido: ${item.id}` });
+      if (seen.has(item.id))
+        ctx.addIssue({ code: 'custom', path: ['items', i, 'id'], message: `id repetido: ${item.id}` });
       seen.add(item.id);
       if (!cats.has(item.categoryId))
-        ctx.addIssue({ code: 'custom', path: ['items', i, 'categoryId'], message: `categoría inexistente: ${item.categoryId}` });
+        ctx.addIssue({
+          code: 'custom',
+          path: ['items', i, 'categoryId'],
+          message: `categoría inexistente: ${item.categoryId}`,
+        });
       const used = [...item.modifierGroupIds, ...item.variants.flatMap((v) => v.modifierGroupIds)];
       for (const g of used)
         if (!groups.has(g))
-          ctx.addIssue({ code: 'custom', path: ['items', i, 'modifierGroupIds'], message: `grupo inexistente: ${g}` });
+          ctx.addIssue({
+            code: 'custom',
+            path: ['items', i, 'modifierGroupIds'],
+            message: `grupo inexistente: ${g}`,
+          });
       const variantIds = new Set<string>();
       for (const v of item.variants) {
         if (variantIds.has(v.id))
-          ctx.addIssue({ code: 'custom', path: ['items', i, 'variants'], message: `variante repetida: ${v.id}` });
+          ctx.addIssue({
+            code: 'custom',
+            path: ['items', i, 'variants'],
+            message: `variante repetida: ${v.id}`,
+          });
         variantIds.add(v.id);
       }
     });
@@ -78,7 +91,9 @@ export const MenuSchema = z
 
 // ---------- Reglas del negocio
 
-const Window = z.tuple([hhmm, hhmm]).refine(([a, b]) => a < b, 'la hora de apertura debe ser antes del cierre');
+const Window = z
+  .tuple([hhmm, hhmm])
+  .refine(([a, b]) => a < b, 'la hora de apertura debe ser antes del cierre');
 const Weekday = z.enum(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']);
 export type Weekday = z.infer<typeof Weekday>;
 
@@ -133,9 +148,14 @@ export const SettingsSchema = z
       const prev = tiers[i - 1];
       const cur = tiers[i];
       if (prev && cur && cur.minDrinks <= prev.minDrinks)
-        ctx.addIssue({ code: 'custom', path: ['discountTiers', i], message: 'los niveles deben ir de menor a mayor' });
+        ctx.addIssue({
+          code: 'custom',
+          path: ['discountTiers', i],
+          message: 'los niveles deben ir de menor a mayor',
+        });
     }
-    if (s.maxDrinks < s.minDrinks) ctx.addIssue({ code: 'custom', path: ['maxDrinks'], message: 'menor que minDrinks' });
+    if (s.maxDrinks < s.minDrinks)
+      ctx.addIssue({ code: 'custom', path: ['maxDrinks'], message: 'menor que minDrinks' });
   });
 
 // ---------- Pedido que envía el cliente

@@ -28,15 +28,15 @@ Contexto de producto y decisiones: `docs/pedidos/contexto.md`. Léelo antes de c
 - Los textos visibles al usuario van en español de México; los identificadores de código, en inglés.
 - Nada de secretos en el repo. Van en `.dev.vars` en local y en `wrangler secret put` en producción.
 - Cada regla de negocio nueva lleva su prueba en `packages/core/test`.
-- Antes de dar algo por terminado: `npm run check` (lint + typecheck + tests).
+- Antes de dar algo por terminado: `pnpm check` (lint + typecheck + tests).
 - Commits pequeños con mensaje en imperativo. Un cambio lógico por commit.
 
 ## Comandos
 
 ```bash
-npm install
-npm run check      # lint, tipos y pruebas de todo el monorepo
-npm run dev        # web en local
-npm run dev:api    # worker + D1 local
-npm run deploy     # build web + deploy del worker
+pnpm install
+pnpm check        # lint, tipos y pruebas de todo el monorepo
+pnpm dev          # web en local
+pnpm dev:api      # worker + D1 local
+pnpm deploy       # build web + deploy del worker
 ```

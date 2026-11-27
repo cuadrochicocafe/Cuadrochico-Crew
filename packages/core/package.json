@@ -17,6 +17,7 @@
     "zod": "^4.0.0"
   },
   "devDependencies": {
+    "@types/node": "^22.20.7",
     "vitest": "^4.1.0"
   }
 }

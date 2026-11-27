@@ -114,10 +114,7 @@
           "priceCents": 8500
         }
       ],
-      "modifierGroupIds": [
-        "leche",
-        "jarabe"
-      ]
+      "modifierGroupIds": ["leche", "jarabe"]
     },
     {
       "id": "chai-latte",
@@ -131,10 +128,7 @@
           "priceCents": 8000
         }
       ],
-      "modifierGroupIds": [
-        "leche",
-        "jarabe"
-      ]
+      "modifierGroupIds": ["leche", "jarabe"]
     },
     {
       "id": "cold-brew",
@@ -151,14 +145,10 @@
           "id": "latte",
           "label": "Latte",
           "priceCents": 7800,
-          "modifierGroupIds": [
-            "leche"
-          ]
+          "modifierGroupIds": ["leche"]
         }
       ],
-      "modifierGroupIds": [
-        "jarabe"
-      ]
+      "modifierGroupIds": ["jarabe"]
     },
     {
       "id": "cold-brew-jamaica",
