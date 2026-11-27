@@ -13,13 +13,15 @@ interface Props {
   draft: CustomerDraft;
   plan: PaymentPlan | null;
   onPlan: (p: PaymentPlan) => void;
+  /** Regresa a un paso anterior para corregirlo. */
+  onEdit: (step: 'build' | 'date' | 'data') => void;
   /** Instante de referencia para el aviso de no reembolsable (inyectable en pruebas). */
   now?: Date;
   onBack: () => void;
   onContinue: () => void;
 }
 
-export function ReviewStep({ settings, quote, slot, draft, plan, onPlan, now, onBack, onContinue }: Props) {
+export function ReviewStep({ settings, quote, slot, draft, plan, onPlan, onEdit, now, onBack, onContinue }: Props) {
   const [error, setError] = useState<string | null>(null);
   const notice = nonRefundableNotice(slot, now ?? new Date(), settings);
   const deposit = chargeFor(quote, 'deposit');
@@ -46,6 +48,9 @@ export function ReviewStep({ settings, quote, slot, draft, plan, onPlan, now, on
         <h3 id="review-order">Bebidas</h3>
         <Lines lines={quote.lines} />
         <Totals quote={quote} depositPercent={settings.depositPercent} plan={plan} />
+        <button type="button" class="btn link" onClick={() => onEdit('build')}>
+          Cambiar bebidas
+        </button>
       </section>
 
       <section class="card" aria-labelledby="review-when">
@@ -62,6 +67,14 @@ export function ReviewStep({ settings, quote, slot, draft, plan, onPlan, now, on
           {draft.email ? ` · ${draft.email}` : ''}
         </p>
         {draft.notes.trim() && <p class="muted">Notas: {draft.notes.trim()}</p>}
+        <div class="edit-links">
+          <button type="button" class="btn link" onClick={() => onEdit('date')}>
+            Cambiar fecha u hora
+          </button>
+          <button type="button" class="btn link" onClick={() => onEdit('data')}>
+            Cambiar datos
+          </button>
+        </div>
       </section>
 
       <fieldset class="card plans" aria-describedby={error ? 'plan-error' : undefined}>

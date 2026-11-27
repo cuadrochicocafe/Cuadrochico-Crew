@@ -44,7 +44,7 @@ export function focusSoon(id: string): void {
   setTimeout(() => document.getElementById(id)?.focus());
 }
 
-export const plural =(n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+export const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 export const STATUS_LABEL: Record<OrderStatus, string> = {
   pending_payment: 'Esperando tu pago',
@@ -66,9 +66,4 @@ export function contactLink(s: Pick<Settings, 'contact'>): { href: string; label
     href: `https://instagram.com/${s.contact.instagram}`,
     label: `Escríbenos por Instagram (@${s.contact.instagram})`,
   };
-}
-
-/** Enfoca un elemento después del siguiente render (p. ej. un mensaje de error recién mostrado). */
-export function focusSoon(id: string): void {
-  setTimeout(() => document.getElementById(id)?.focus());
 }
