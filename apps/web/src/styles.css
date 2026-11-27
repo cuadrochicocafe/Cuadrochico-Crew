@@ -548,6 +548,10 @@ dd {
   margin: 0;
 }
 
+.card.highlight {
+  border: 3px solid var(--accent-text);
+}
+
 .prep {
   width: 100%;
   border-collapse: collapse;

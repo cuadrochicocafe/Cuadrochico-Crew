@@ -81,6 +81,25 @@ export function PaymentStep(props: Props) {
 
   const showContact = captchaFailed || error?.error === 'captcha';
 
+  // Sin formas de pago configuradas (faltan secretos en el servidor): se ofrece pedir por chat.
+  if (methods.length === 0)
+    return (
+      <>
+        <p class="notice" role="status">
+          Por ahora no podemos recibir pagos en línea. Escríbenos y terminamos tu pedido por chat:{' '}
+          <a href={contact.href} target="_blank" rel="noopener noreferrer">
+            {contact.label}
+            <span class="sr-only"> (se abre en otra pestaña)</span>
+          </a>
+        </p>
+        <div class="nav">
+          <button type="button" class="btn" onClick={onBack}>
+            Atrás
+          </button>
+        </div>
+      </>
+    );
+
   return (
     <>
       <section class="card" aria-labelledby="pay-amount">

@@ -9,7 +9,7 @@ import {
   type Settings,
 } from '@cuadrochico/core';
 import { useEffect, useState } from 'preact/hooks';
-import { adminApi, apiErrorMessage, toApiError } from '../api';
+import { ApiRequestError, adminApi, apiErrorMessage, toApiError } from '../api';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { formatLocalDate, STATUS_LABEL } from '../lib';
 
@@ -32,7 +32,8 @@ function saveToken(t: string) {
   }
 }
 
-export function AdminPage({ settings }: { settings: Settings }) {
+/** `highlight`: código que llega en `/admin?pedido=CODE` (enlace del evento de Google Calendar). */
+export function AdminPage({ settings, highlight = null }: { settings: Settings; highlight?: string | null }) {
   const [token, setToken] = useState(readToken);
   const [tab, setTab] = useState<'orders' | 'prep'>('orders');
 
@@ -78,7 +79,7 @@ export function AdminPage({ settings }: { settings: Settings }) {
         </button>
       </div>
       {tab === 'orders' ? (
-        <Orders token={token} settings={settings} onUnauthorized={logout} />
+        <Orders token={token} settings={settings} highlight={highlight} onUnauthorized={logout} />
       ) : (
         <Prep token={token} settings={settings} onUnauthorized={logout} />
       )}
@@ -120,10 +121,11 @@ interface TabProps {
   onUnauthorized: () => void;
 }
 
-function Orders({ token, settings, onUnauthorized }: TabProps) {
+function Orders({ token, settings, highlight, onUnauthorized }: TabProps & { highlight: string | null }) {
   const today = localDate(new Date(), settings.timezone);
-  const [from, setFrom] = useState(today);
-  const [to, setTo] = useState(addDays(today, 14));
+  // Con un pedido señalado se abre un rango amplio para que aparezca aunque sea de otra semana.
+  const [from, setFrom] = useState(highlight ? addDays(today, -30) : today);
+  const [to, setTo] = useState(addDays(today, highlight ? settings.maxDaysAhead : 14));
   const [orders, setOrders] = useState<AdminOrder[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState<AdminOrder | null>(null);
@@ -135,23 +137,34 @@ function Orders({ token, settings, onUnauthorized }: TabProps) {
     else setError(apiErrorMessage(err));
   };
 
-  const load = () => {
-    setError(null);
+  const load = (clearError = true) => {
+    if (clearError) setError(null);
     adminApi
       .orders(token, from, to)
       .then((r) => setOrders(r.orders))
       .catch(fail);
   };
 
-  useEffect(load, [from, to]);
+  useEffect(() => load(), [from, to]);
+
+  const found = !!highlight && !!orders?.some((o) => o.code === highlight);
+  useEffect(() => {
+    if (found && highlight) {
+      const el = document.getElementById(`order-${highlight}`);
+      el?.scrollIntoView?.({ block: 'center' });
+      el?.focus();
+    }
+  }, [found]);
 
   const update = async (code: string, body: AdminUpdateOrderRequest) => {
     setBusy(true);
     try {
-      await adminApi.update(token, code, body);
-      load();
+      const { order } = await adminApi.update(token, code, body);
+      setOrders((list) => list?.map((o) => (o.code === order.code ? order : o)) ?? list);
     } catch (e) {
       fail(e);
+      // 409: alguien más cambió el pedido; se muestra el mensaje y se recarga la lista.
+      if (e instanceof ApiRequestError && e.status === 409) load(false);
     } finally {
       setBusy(false);
     }
@@ -184,7 +197,7 @@ function Orders({ token, settings, onUnauthorized }: TabProps) {
             onChange={(e) => setTo((e.target as HTMLInputElement).value)}
           />
         </div>
-        <button type="button" class="btn" onClick={load}>
+        <button type="button" class="btn" onClick={() => load()}>
           Actualizar
         </button>
       </div>
@@ -195,12 +208,23 @@ function Orders({ token, settings, onUnauthorized }: TabProps) {
       )}
       {orders === null && !error && <p aria-live="polite">Cargando pedidos…</p>}
       {orders?.length === 0 && <p>No hay pedidos en esas fechas.</p>}
+      {highlight && orders && !found && (
+        <p class="notice">
+          El pedido {highlight} no está entre estas fechas. Ajusta el rango para encontrarlo.
+        </p>
+      )}
       {[...byDate].map(([date, list]) => (
         <section key={date} aria-labelledby={`d-${date}`}>
           <h3 id={`d-${date}`}>{formatLocalDate(date)}</h3>
           <ul class="admin-orders">
             {list.map((o) => (
-              <li key={o.code} class="card">
+              <li
+                key={o.code}
+                id={`order-${o.code}`}
+                tabIndex={-1}
+                class={o.code === highlight ? 'card highlight' : 'card'}
+                aria-current={o.code === highlight ? 'true' : undefined}
+              >
                 <AdminOrderCard order={o} busy={busy} onUpdate={update} onCancel={() => setCancelling(o)} />
               </li>
             ))}

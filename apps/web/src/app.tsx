@@ -62,7 +62,9 @@ export function App() {
             {route.name === 'order' && (
               <OrderPage settings={catalog.settings} code={route.code} token={loc.query.get('t') ?? ''} />
             )}
-            {route.name === 'admin' && <AdminPage settings={catalog.settings} />}
+            {route.name === 'admin' && (
+              <AdminPage settings={catalog.settings} highlight={loc.query.get('pedido')} />
+            )}
             {route.name === 'not-found' && (
               <p>
                 No encontramos esta página. <a href="/">Haz un pedido</a>.

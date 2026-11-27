@@ -13,10 +13,16 @@ import { addLine, quoteCart } from '../src/order/cart';
 import { EMPTY_CUSTOMER } from '../src/order/DataStep';
 import { DateStep } from '../src/order/DateStep';
 import { OrderFlow } from '../src/order/OrderFlow';
+import { PaymentStep } from '../src/order/PaymentStep';
 import { ReviewStep } from '../src/order/ReviewStep';
+import { AdminPage } from '../src/pages/AdminPage';
 import { OrderView } from '../src/pages/OrderPage';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+  sessionStorage.clear();
+});
 
 function makeQuote(qty = 12): Quote {
   const r = quoteCart(
@@ -215,5 +221,101 @@ describe('flujo del pedido', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Agregar' })[0] as HTMLElement);
     await waitFor(() => expect(screen.getByText('Total')).toBeTruthy());
     expect(screen.getByText(/Anticipo del 50 %/)).toBeTruthy();
+  });
+});
+
+describe('pago', () => {
+  const base = {
+    quote: makeQuote(),
+    plan: 'deposit' as const,
+    slot: farSlot,
+    method: null,
+    onMethod: vi.fn(),
+    submitting: false,
+    error: null,
+    onSubmit: vi.fn(),
+    onEdit: vi.fn(),
+    onBack: vi.fn(),
+    now,
+  };
+  const withPayments = (transfer: boolean, mercadopago: boolean) => ({
+    ...settings,
+    payments: {
+      transfer: { ...settings.payments.transfer, enabled: transfer },
+      mercadopago: { enabled: mercadopago },
+    },
+  });
+
+  it('oculta las formas de pago desactivadas y no preselecciona ninguna', () => {
+    render(<PaymentStep {...base} settings={withPayments(true, false)} />);
+    const radios = screen.getAllByRole('radio') as HTMLInputElement[];
+    expect(radios).toHaveLength(1);
+    expect(radios[0]?.checked).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: /Confirmar y pagar/ }));
+    expect(base.onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('sin formas de pago ofrece pedir por chat en lugar del pago', () => {
+    render(<PaymentStep {...base} settings={withPayments(false, false)} />);
+    expect(screen.queryByRole('button', { name: /Confirmar y pagar/ })).toBeNull();
+    expect(screen.getByRole('link').getAttribute('href')).toContain('instagram.com');
+  });
+});
+
+describe('admin', () => {
+  const adminOrder = (code: string, status: PublicOrder['status'] = 'confirmed') => ({
+    ...order(cancellable, status),
+    code,
+    customerPhone: '8112345678',
+    customerEmail: '',
+    updatedAt: '2026-12-01T18:00:00Z',
+    events: [],
+    providerFeeCents: null,
+    refundCents: null,
+  });
+  const json = (status: number, body: unknown) =>
+    new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+
+  it('resalta el pedido de /admin?pedido=CODE', async () => {
+    sessionStorage.setItem('cc-admin-token', 'secreto');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => json(200, { orders: [adminOrder('CC-AAAA'), adminOrder('CC-BBBB')] })),
+    );
+    render(<AdminPage settings={settings} highlight="CC-BBBB" />);
+    await waitFor(() => expect(document.getElementById('order-CC-BBBB')).toBeTruthy());
+    expect(document.getElementById('order-CC-BBBB')?.className).toContain('highlight');
+    expect(document.getElementById('order-CC-AAAA')?.className).not.toContain('highlight');
+  });
+
+  it('muestra cancelados con monto a devolver y comisión', async () => {
+    sessionStorage.setItem('cc-admin-token', 'secreto');
+    const cancelled = { ...adminOrder('CC-CCCC', 'cancelled'), refundCents: 50000, providerFeeCents: 2100 };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => json(200, { orders: [cancelled] })),
+    );
+    render(<AdminPage settings={settings} />);
+    await waitFor(() => expect(screen.getByText('Monto a devolver')).toBeTruthy());
+    expect(document.body.textContent).toContain('$500');
+    expect(document.body.textContent).toContain('$21');
+  });
+
+  it('un 409 muestra el mensaje y recarga la lista', async () => {
+    sessionStorage.setItem('cc-admin-token', 'secreto');
+    const f = vi.fn(async (_url: string, init?: RequestInit) =>
+      init?.method === 'PATCH'
+        ? json(409, { error: 'internal', message: 'Alguien más cambió este pedido.' })
+        : json(200, { orders: [adminOrder('CC-AAAA')] }),
+    );
+    vi.stubGlobal('fetch', f);
+    render(<AdminPage settings={settings} />);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Marcar listo' })).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: 'Marcar listo' }));
+    await waitFor(() =>
+      expect(screen.getByRole('alert').textContent).toBe('Alguien más cambió este pedido.'),
+    );
+    await waitFor(() => expect(f.mock.calls.filter(([, i]) => !i?.method).length).toBe(2));
+    expect(screen.getByRole('alert').textContent).toBe('Alguien más cambió este pedido.');
   });
 });

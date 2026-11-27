@@ -1,5 +1,6 @@
 /** Cliente HTTP de la API. Solo usa los tipos del contrato en `@cuadrochico/core` (`api.ts`). */
 import type {
+  AdminOrder,
   AdminOrdersResponse,
   AdminUpdateOrderRequest,
   ApiError,
@@ -129,7 +130,7 @@ export const adminApi = {
   orders: (token: string, from: string, to: string) =>
     request<AdminOrdersResponse>(`/api/admin/orders${q({ from, to })}`, { headers: bearer(token) }),
   update: (token: string, code: string, body: AdminUpdateOrderRequest) =>
-    request<unknown>(`/api/admin/orders/${enc(code)}`, {
+    request<{ order: AdminOrder }>(`/api/admin/orders/${enc(code)}`, {
       method: 'PATCH',
       headers: bearer(token),
       body: JSON.stringify(body),
