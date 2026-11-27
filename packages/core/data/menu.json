@@ -100,7 +100,8 @@
           "label": "Regular",
           "priceCents": 8500
         }
-      ]
+      ],
+      "modifierGroupIds": ["leche"]
     },
     {
       "id": "matcha-latte",

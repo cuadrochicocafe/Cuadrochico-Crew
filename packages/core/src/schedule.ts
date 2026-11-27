@@ -101,8 +101,8 @@ export type SlotProblem = 'invalid_slot' | 'closed' | 'too_soon' | 'too_far' | '
 
 export interface SlotInfo {
   time: string;
-  /** Bebidas que todavía caben en ese horario. */
-  remaining: number;
+  /** Bebidas que todavía caben en ese horario; `null` si no hay límite de capacidad. */
+  remaining: number | null;
   available: boolean;
   problem?: SlotProblem;
 }
@@ -114,9 +114,19 @@ export interface DayAvailability {
   problem?: SlotProblem;
 }
 
-function earliestInstant(now: Date, settings: Settings): number {
-  return now.getTime() + settings.leadTimeHours * 3600_000;
+/** Horas mínimas de anticipación para un pedido de `drinks` bebidas: el nivel más alto alcanzado. */
+export function leadTimeHoursFor(drinks: number, settings: Settings): number {
+  const n = Math.max(drinks, 1);
+  let hours = settings.leadTimeTiers[0]?.hours ?? 0;
+  for (const t of settings.leadTimeTiers) if (n >= t.minDrinks) hours = t.hours;
+  return hours;
 }
+
+function earliestInstant(now: Date, settings: Settings, drinks: number): number {
+  return now.getTime() + leadTimeHoursFor(drinks, settings) * 3600_000;
+}
+
+const hoursLabel = (h: number) => (h % 24 === 0 ? `${h / 24} ${h === 24 ? 'día' : 'días'}` : `${h} horas`);
 
 function lastDate(now: Date, settings: Settings): string {
   return addDays(localDate(now, settings.timezone), settings.maxDaysAhead);
@@ -134,17 +144,18 @@ export function dayAvailability(
   const times = slotsFor(date, settings);
   if (!times.length) return { date, slots: [], problem: 'closed' };
 
-  const earliest = earliestInstant(now, settings);
-  const dayLeft = settings.capacity.drinksPerDay - booked.perDay;
+  const earliest = earliestInstant(now, settings, drinks);
+  const cap = settings.capacity;
+  const dayLeft = cap ? cap.drinksPerDay - booked.perDay : null;
   const slots = times.map((time): SlotInfo => {
-    const remaining = Math.max(
-      0,
-      Math.min(settings.capacity.drinksPerSlot - (booked.perSlot[time] ?? 0), dayLeft),
-    );
+    const remaining =
+      cap && dayLeft !== null
+        ? Math.max(0, Math.min(cap.drinksPerSlot - (booked.perSlot[time] ?? 0), dayLeft))
+        : null;
     let problem: SlotProblem | undefined;
     if (zonedToUtc(date, time, settings.timezone).getTime() < earliest) problem = 'too_soon';
-    else if (dayLeft < Math.max(drinks, 1)) problem = 'day_full';
-    else if (remaining < Math.max(drinks, 1)) problem = 'slot_full';
+    else if (dayLeft !== null && dayLeft < Math.max(drinks, 1)) problem = 'day_full';
+    else if (remaining !== null && remaining < Math.max(drinks, 1)) problem = 'slot_full';
     return problem ? { time, remaining, available: false, problem } : { time, remaining, available: true };
   });
 
@@ -174,23 +185,39 @@ export function checkSlot(
 }
 
 /** Primera fecha local en la que podría haber algún horario disponible (ignorando ocupación). */
-export function firstOrderableDate(now: Date, settings: Settings): string | null {
+export function firstOrderableDate(now: Date, settings: Settings, drinks = 0): string | null {
   const end = lastDate(now, settings);
   for (let d = localDate(now, settings.timezone); d <= end; d = addDays(d, 1)) {
-    const day = dayAvailability(d, now, settings);
+    const day = dayAvailability(d, now, settings, NO_BOOKINGS, drinks);
     if (!day.problem) return d;
   }
   return null;
 }
 
-export function slotProblemMessage(p: SlotProblem, settings: Settings): string {
+/**
+ * Explica la anticipación que pide un pedido de este tamaño, para que la web diga por qué
+ * cambian las fechas disponibles (p. ej. al pasar de 24 a 25 bebidas).
+ */
+export function leadTimeMessage(drinks: number, settings: Settings): string {
+  const hours = leadTimeHoursFor(drinks, settings);
+  const tiers = settings.leadTimeTiers;
+  const tier = [...tiers].reverse().find((t) => Math.max(drinks, 1) >= t.minDrinks);
+  const base = `necesitamos al menos ${hoursLabel(hours)} de anticipación`;
+  if (tier && tier !== tiers[0]) return `Para pedidos de ${tier.minDrinks} bebidas o más ${base}.`;
+  const next = tiers[1];
+  return next
+    ? `Para tu pedido ${base}. A partir de ${next.minDrinks} bebidas necesitamos ${hoursLabel(next.hours)}.`
+    : `Para tu pedido ${base}.`;
+}
+
+export function slotProblemMessage(p: SlotProblem, settings: Settings, drinks = 0): string {
   switch (p) {
     case 'invalid_slot':
       return 'Ese horario no existe. Elige otro de la lista.';
     case 'closed':
       return 'Ese día no hacemos entregas. Elige otra fecha.';
     case 'too_soon':
-      return `Necesitamos al menos ${settings.leadTimeHours} horas para preparar tu pedido.`;
+      return leadTimeMessage(drinks, settings);
     case 'too_far':
       return `Solo tomamos pedidos con hasta ${settings.maxDaysAhead} días de anticipación.`;
     case 'slot_full':

@@ -3,6 +3,7 @@ import settingsJson from '../data/settings.json';
 import { MenuSchema, SettingsSchema } from './schema';
 
 export * from './api';
+export * from './cancellation';
 export * from './pricing';
 export * from './schedule';
 export * from './schema';

@@ -102,24 +102,39 @@ export const DiscountTierSchema = z.object({
   percent: z.number().min(0).max(100),
 });
 
+/** Horas mínimas de anticipación según el tamaño del pedido: aplica el nivel más alto alcanzado. */
+export const LeadTimeTierSchema = z.object({
+  minDrinks: z.number().int().positive(),
+  hours: z.number().int().nonnegative(),
+});
+
+/** Tope técnico anti-abuso, no regla de negocio: pedidos más grandes se organizan por WhatsApp. */
+export const MAX_DRINKS_PER_ORDER = 1000;
+
 export const SettingsSchema = z
   .object({
     businessName: z.string(),
     timezone: z.string(),
     minDrinks: z.number().int().positive(),
-    maxDrinks: z.number().int().positive(),
-    leadTimeHours: z.number().int().nonnegative(),
+    leadTimeTiers: z.array(LeadTimeTierSchema).min(1),
     maxDaysAhead: z.number().int().positive(),
     slotMinutes: z.number().int().positive(),
-    capacity: z.object({
-      drinksPerSlot: z.number().int().positive(),
-      drinksPerDay: z.number().int().positive(),
-    }),
+    /** Límite de producción; `null` = sin límite. Se conserva el código por si se necesita después. */
+    capacity: z
+      .object({
+        drinksPerSlot: z.number().int().positive(),
+        drinksPerDay: z.number().int().positive(),
+      })
+      .nullable()
+      .default(null),
     /** Ventanas de entrega por día de la semana. La última entrega empieza `slotMinutes` antes del cierre. */
     hours: z.record(Weekday, z.array(Window)),
     closedDates: z.array(isoDate).default([]),
     discountTiers: z.array(DiscountTierSchema),
+    /** Porcentaje del anticipo cuando el cliente elige `paymentPlan: 'deposit'`. */
     depositPercent: z.number().min(0).max(100),
+    /** Se puede cancelar hasta estas horas antes de la entrega. */
+    cancellationHours: z.number().int().nonnegative(),
     /** Horas que un pedido sin pagar aparta su lugar antes de vencer. */
     unpaidHoldHours: z.number().positive(),
     fulfillment: z.object({
@@ -143,19 +158,25 @@ export const SettingsSchema = z
     contact: z.object({ whatsapp: z.string(), instagram: z.string() }),
   })
   .superRefine((s, ctx) => {
-    const tiers = s.discountTiers;
-    for (let i = 1; i < tiers.length; i++) {
-      const prev = tiers[i - 1];
-      const cur = tiers[i];
-      if (prev && cur && cur.minDrinks <= prev.minDrinks)
-        ctx.addIssue({
-          code: 'custom',
-          path: ['discountTiers', i],
-          message: 'los niveles deben ir de menor a mayor',
-        });
+    for (const key of ['discountTiers', 'leadTimeTiers'] as const) {
+      const tiers = s[key];
+      for (let i = 1; i < tiers.length; i++) {
+        const prev = tiers[i - 1];
+        const cur = tiers[i];
+        if (prev && cur && cur.minDrinks <= prev.minDrinks)
+          ctx.addIssue({
+            code: 'custom',
+            path: [key, i],
+            message: 'los niveles deben ir de menor a mayor',
+          });
+      }
     }
-    if (s.maxDrinks < s.minDrinks)
-      ctx.addIssue({ code: 'custom', path: ['maxDrinks'], message: 'menor que minDrinks' });
+    if (s.leadTimeTiers[0]?.minDrinks !== 1)
+      ctx.addIssue({
+        code: 'custom',
+        path: ['leadTimeTiers', 0],
+        message: 'el primer nivel debe empezar en 1 bebida',
+      });
   });
 
 // ---------- Pedido que envía el cliente
@@ -171,7 +192,7 @@ export const OrderLineInputSchema = z.object({
   variantId: id,
   /** groupId -> optionId */
   options: z.record(z.string(), z.string()).default({}),
-  qty: z.number().int().positive().max(500),
+  qty: z.number().int().positive().max(MAX_DRINKS_PER_ORDER),
 });
 
 export const OrderInputSchema = z.object({
@@ -191,6 +212,8 @@ export const OrderInputSchema = z.object({
   slot: z.object({ date: isoDate, time: hhmm }),
   lines: z.array(OrderLineInputSchema).min(1).max(50),
   paymentMethod: z.enum(['transfer', 'mercadopago']),
+  /** El cliente elige: anticipo (`depositPercent`) o liquidar el 100 %. Sin valor por defecto. */
+  paymentPlan: z.enum(['deposit', 'full']),
   notes: z.string().trim().max(500).default(''),
   /** Token de Cloudflare Turnstile (anti-bots). Opcional si el servidor no lo exige. */
   captchaToken: z.string().max(4096).optional(),
@@ -201,7 +224,9 @@ export type MenuItem = z.infer<typeof MenuItemSchema>;
 export type ModifierGroup = z.infer<typeof ModifierGroupSchema>;
 export type Settings = z.infer<typeof SettingsSchema>;
 export type DiscountTier = z.infer<typeof DiscountTierSchema>;
+export type LeadTimeTier = z.infer<typeof LeadTimeTierSchema>;
 export type OrderLineInput = z.infer<typeof OrderLineInputSchema>;
 export type OrderInput = z.infer<typeof OrderInputSchema>;
 export type OrderInputRaw = z.input<typeof OrderInputSchema>;
 export type PaymentMethod = OrderInput['paymentMethod'];
+export type PaymentPlan = OrderInput['paymentPlan'];

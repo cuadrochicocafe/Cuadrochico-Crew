@@ -2,14 +2,10 @@
   "businessName": "Cuadrochico · Barra de café",
   "timezone": "America/Monterrey",
   "minDrinks": 6,
-  "maxDrinks": 200,
-  "leadTimeHours": 48,
+  "leadTimeTiers": [{ "minDrinks": 1, "hours": 48 }, { "minDrinks": 25, "hours": 168 }],
   "maxDaysAhead": 60,
   "slotMinutes": 30,
-  "capacity": {
-    "drinksPerSlot": 48,
-    "drinksPerDay": 150
-  },
+  "capacity": null,
   "hours": {
     "mon": [["08:00", "21:00"]],
     "tue": [["08:00", "21:00"]],
@@ -26,6 +22,7 @@
     { "minDrinks": 24, "percent": 15 }
   ],
   "depositPercent": 50,
+  "cancellationHours": 72,
   "unpaidHoldHours": 12,
   "fulfillment": {
     "pickup": {

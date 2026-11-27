@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
+  chargeFor,
   defaultSettings,
   discountFor,
   formatMXN,
+  MAX_DRINKS_PER_ORDER,
   defaultMenu as menu,
   nextTierFor,
+  OrderInputSchema,
   type OrderLineInput,
   quote,
+  quoteErrorMessage,
   type Settings,
 } from '../src';
 
@@ -116,6 +120,49 @@ describe('quote', () => {
     expect(quote([line('chai-latte', 6)], { ...ctx, settings: s, fulfillment: 'delivery' }).ok).toBe(false);
     const r = quote([line('chai-latte', 12)], { ...ctx, settings: s, fulfillment: 'delivery' });
     expect(r.ok && r.value.totalCents).toBe(12 * 8000 - 9600 + 8000);
+  });
+});
+
+describe('chargeFor', () => {
+  const r = quote([line('cold-brew', 6, 'negro')], ctx);
+  if (!r.ok) throw new Error('cotización inválida');
+  it('anticipo: cobra el 50 % ahora y el resto al recoger', () => {
+    expect(chargeFor(r.value, 'deposit')).toEqual({ dueNowCents: 21400, balanceCents: 21300 });
+  });
+  it('liquidación: cobra el 100 % ahora y no queda saldo', () => {
+    expect(chargeFor(r.value, 'full')).toEqual({ dueNowCents: 42700, balanceCents: 0 });
+  });
+  it('el pedido exige elegir plan; no hay uno por defecto', () => {
+    const base = {
+      customer: { name: 'Ana López', phone: '81 1234 5678' },
+      fulfillment: { type: 'pickup' },
+      slot: { date: '2026-12-04', time: '12:00' },
+      lines: [line('cold-brew', 6, 'negro')],
+      paymentMethod: 'transfer',
+    };
+    expect(OrderInputSchema.safeParse(base).success).toBe(false);
+    expect(OrderInputSchema.safeParse({ ...base, paymentPlan: 'full' }).success).toBe(true);
+    expect(OrderInputSchema.safeParse({ ...base, paymentPlan: 'otro' }).success).toBe(false);
+  });
+});
+
+describe('límites y menú', () => {
+  it('no hay máximo de negocio; solo el tope técnico de 1000 bebidas', () => {
+    expect(quote([line('chai-latte', MAX_DRINKS_PER_ORDER)], ctx).ok).toBe(true);
+    const r = quote([line('chai-latte', 500), line('matcha-latte', 501)], ctx);
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors).toContainEqual({ code: 'above_maximum', drinks: 1001, maximum: 1000 });
+      expect(quoteErrorMessage(r.errors[0] ?? { code: 'delivery_unavailable' })).toContain(
+        'escríbenos por WhatsApp',
+      );
+    }
+  });
+
+  it('el Cinnamon Banana Latte lleva elección de leche y las vegetales no cuestan extra', () => {
+    const r = quote([line('cinnamon-banana-latte', 6, 'regular', { leche: 'avena' })], ctx);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.lines[0]?.unitPriceCents).toBe(8500);
   });
 });
 

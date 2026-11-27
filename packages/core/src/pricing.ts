@@ -1,4 +1,13 @@
-import type { DiscountTier, Menu, MenuItem, ModifierGroup, OrderLineInput, Settings } from './schema';
+import {
+  type DiscountTier,
+  MAX_DRINKS_PER_ORDER,
+  type Menu,
+  type MenuItem,
+  type ModifierGroup,
+  type OrderLineInput,
+  type PaymentPlan,
+  type Settings,
+} from './schema';
 
 export interface PricedOption {
   groupId: string;
@@ -154,8 +163,8 @@ export function quote(lines: readonly OrderLineInput[], ctx: QuoteContext): Resu
   const drinks = lines.reduce((s, l) => s + l.qty, 0);
   if (drinks < settings.minDrinks)
     errors.push({ code: 'below_minimum', drinks, minimum: settings.minDrinks });
-  if (drinks > settings.maxDrinks)
-    errors.push({ code: 'above_maximum', drinks, maximum: settings.maxDrinks });
+  if (drinks > MAX_DRINKS_PER_ORDER)
+    errors.push({ code: 'above_maximum', drinks, maximum: MAX_DRINKS_PER_ORDER });
 
   const delivery = settings.fulfillment.delivery;
   if (ctx.fulfillment === 'delivery') {
@@ -191,6 +200,19 @@ export function quote(lines: readonly OrderLineInput[], ctx: QuoteContext): Resu
       nextTier: nextTierFor(drinks, settings.discountTiers),
     },
   };
+}
+
+export interface Charge {
+  /** Lo que se cobra ahora (Mercado Pago o transferencia). */
+  dueNowCents: number;
+  /** Lo que queda por pagar al recoger. */
+  balanceCents: number;
+}
+
+/** Cuánto se cobra ahora según el plan que eligió el cliente: anticipo o liquidación del 100 %. */
+export function chargeFor(q: Pick<Quote, 'totalCents' | 'depositCents'>, plan: PaymentPlan): Charge {
+  const dueNowCents = plan === 'full' ? q.totalCents : q.depositCents;
+  return { dueNowCents, balanceCents: q.totalCents - dueNowCents };
 }
 
 /** Mensaje en español para cada error de cotización, listo para mostrar al cliente. */
