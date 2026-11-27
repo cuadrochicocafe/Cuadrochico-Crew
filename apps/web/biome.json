@@ -1,5 +1,5 @@
 {
   "root": false,
   "extends": "//",
-  "files": { "includes": ["**", "!public"] }
+  "files": { "includes": ["**", "!public", "!dist"] }
 }
