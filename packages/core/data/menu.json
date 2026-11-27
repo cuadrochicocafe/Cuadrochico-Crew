@@ -1,0 +1,194 @@
+{
+  "version": 1,
+  "categories": [
+    {
+      "id": "clasicas",
+      "name": "Clásicas"
+    },
+    {
+      "id": "especialidad",
+      "name": "Bebidas de especialidad"
+    },
+    {
+      "id": "temporada",
+      "name": "De temporada"
+    }
+  ],
+  "modifierGroups": [
+    {
+      "id": "leche",
+      "name": "Leche",
+      "options": [
+        {
+          "id": "entera",
+          "label": "Entera",
+          "priceCents": 0
+        },
+        {
+          "id": "deslactosada",
+          "label": "Deslactosada",
+          "priceCents": 0
+        },
+        {
+          "id": "almendra",
+          "label": "Almendra",
+          "priceCents": 0
+        },
+        {
+          "id": "avena",
+          "label": "Avena",
+          "priceCents": 0
+        }
+      ]
+    },
+    {
+      "id": "jarabe",
+      "name": "Jarabe",
+      "options": [
+        {
+          "id": "sin-jarabe",
+          "label": "Sin jarabe",
+          "priceCents": 0
+        },
+        {
+          "id": "moka",
+          "label": "Moka",
+          "priceCents": 500
+        },
+        {
+          "id": "vainilla",
+          "label": "Vainilla",
+          "priceCents": 500
+        },
+        {
+          "id": "canela",
+          "label": "Canela",
+          "priceCents": 500
+        },
+        {
+          "id": "platano",
+          "label": "Plátano",
+          "priceCents": 500
+        },
+        {
+          "id": "caramelo",
+          "label": "Caramelo",
+          "priceCents": 500
+        },
+        {
+          "id": "miel-de-abeja",
+          "label": "Miel de abeja",
+          "priceCents": 500
+        },
+        {
+          "id": "miel-de-agave",
+          "label": "Miel de agave",
+          "priceCents": 500
+        }
+      ]
+    }
+  ],
+  "items": [
+    {
+      "id": "cinnamon-banana-latte",
+      "name": "Cinnamon Banana Latte",
+      "description": "Nuestro latte de plátano y canela.",
+      "categoryId": "clasicas",
+      "variants": [
+        {
+          "id": "regular",
+          "label": "Regular",
+          "priceCents": 8500
+        }
+      ],
+      "modifierGroupIds": ["leche"]
+    },
+    {
+      "id": "matcha-latte",
+      "name": "Matcha Latte",
+      "description": "Matcha con la leche que prefieras.",
+      "categoryId": "clasicas",
+      "variants": [
+        {
+          "id": "regular",
+          "label": "Regular",
+          "priceCents": 8500
+        }
+      ],
+      "modifierGroupIds": ["leche", "jarabe"]
+    },
+    {
+      "id": "chai-latte",
+      "name": "Chai Latte",
+      "description": "Chai especiado con la leche que prefieras.",
+      "categoryId": "clasicas",
+      "variants": [
+        {
+          "id": "regular",
+          "label": "Regular",
+          "priceCents": 8000
+        }
+      ],
+      "modifierGroupIds": ["leche", "jarabe"]
+    },
+    {
+      "id": "cold-brew",
+      "name": "Cold Brew",
+      "description": "Café de extracción en frío. Negro o latte con la leche que prefieras.",
+      "categoryId": "clasicas",
+      "variants": [
+        {
+          "id": "negro",
+          "label": "Negro",
+          "priceCents": 7500
+        },
+        {
+          "id": "latte",
+          "label": "Latte",
+          "priceCents": 7800,
+          "modifierGroupIds": ["leche"]
+        }
+      ],
+      "modifierGroupIds": ["jarabe"]
+    },
+    {
+      "id": "cold-brew-jamaica",
+      "name": "Cold Brew Jamaica",
+      "description": "Cold brew con jamaica.",
+      "categoryId": "especialidad",
+      "variants": [
+        {
+          "id": "regular",
+          "label": "Regular",
+          "priceCents": 8200
+        }
+      ]
+    },
+    {
+      "id": "cold-brew-tonic",
+      "name": "Cold Brew Tonic",
+      "description": "Cold brew con agua tónica.",
+      "categoryId": "especialidad",
+      "variants": [
+        {
+          "id": "regular",
+          "label": "Regular",
+          "priceCents": 7800
+        }
+      ]
+    },
+    {
+      "id": "cold-brew-lemonade",
+      "name": "Cold Brew Lemonade",
+      "description": "Cold brew con limonada.",
+      "categoryId": "especialidad",
+      "variants": [
+        {
+          "id": "regular",
+          "label": "Regular",
+          "priceCents": 8200
+        }
+      ]
+    }
+  ]
+}

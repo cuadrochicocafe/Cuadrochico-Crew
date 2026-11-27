@@ -1,0 +1,23 @@
+{
+  "name": "@cuadrochico/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Reglas de negocio de pedidos de mayoreo: precios, descuentos, horarios y validación. Sin dependencias de navegador ni de servidor.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./data/menu.json": "./data/menu.json",
+    "./data/settings.json": "./data/settings.json"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.7",
+    "vitest": "^4.1.0"
+  }
+}

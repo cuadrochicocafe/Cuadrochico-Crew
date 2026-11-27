@@ -1,0 +1,25 @@
+{
+  "name": "cuadrochico",
+  "private": true,
+  "description": "Cuadrochico · herramientas internas y pedidos de mayoreo",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @cuadrochico/web dev",
+    "dev:api": "pnpm --filter @cuadrochico/api dev",
+    "build": "pnpm --filter @cuadrochico/web build",
+    "test": "pnpm -r --if-present test",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "check": "pnpm lint && pnpm typecheck && pnpm test",
+    "deploy": "pnpm build && pnpm --filter @cuadrochico/api deploy"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.6.0",
+    "typescript": "^5.9.0"
+  },
+  "packageManager": "pnpm@12.23.0"
+}

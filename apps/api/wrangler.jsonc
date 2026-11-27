@@ -1,0 +1,26 @@
+// Configuración del Worker de pedidos. Los secretos NO van aquí: ver .dev.vars.example y README.md.
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "cuadrochico-pedidos",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-01",
+  // La app web compilada (pnpm build). /api/* siempre llega al Worker; lo demás es la SPA.
+  "assets": {
+    "directory": "../web/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "cuadrochico-pedidos",
+      // Id de `wrangler d1 create cuadrochico-pedidos` (no es secreto).
+      "database_id": "13e03792-6134-4512-995f-0af961f440a6",
+      "migrations_dir": "migrations"
+    }
+  ],
+  // Cada 15 minutos expira los pedidos sin pagar que ya vencieron.
+  "triggers": { "crons": ["*/15 * * * *"] },
+  "observability": { "enabled": true }
+}
