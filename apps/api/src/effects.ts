@@ -59,6 +59,16 @@ export async function onOrderCreated(env: Env, r: OrderRow): Promise<void> {
   );
 }
 
+/** Llamar cuando el admin cambia lo pagado sin cambiar el estado: el saldo del evento del calendario se actualiza. */
+export async function onPaymentUpdated(
+  env: Env,
+  r: OrderRow,
+  prevPaidCents: number,
+  settings: Settings,
+): Promise<void> {
+  if (r.paid_cents !== prevPaidCents && ON_CALENDAR.includes(r.status)) await syncCalendar(env, r, settings);
+}
+
 /** Llamar después de guardar un cambio de estado de `prev` a `r.status`. */
 export async function onStatusChanged(
   env: Env,

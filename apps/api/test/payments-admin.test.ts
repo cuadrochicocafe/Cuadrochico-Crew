@@ -151,6 +151,25 @@ describe('webhook de Mercado Pago', () => {
   });
 });
 
+describe('calendario y saldo', () => {
+  it('si el admin cambia lo pagado sin cambiar el estado, se actualiza el evento', async () => {
+    const created = await create();
+    const code = created.order.code;
+    await admin(`/api/admin/orders/${code}`, {
+      method: 'PATCH',
+      json: { status: 'confirmed', paidCents: created.payment.amountCents },
+    });
+    const writes = () => out.calendar.filter((c) => c.method === 'POST' || c.method === 'PUT').length;
+    const before = writes();
+    const total = created.order.quote.totalCents;
+    const res = await admin(`/api/admin/orders/${code}`, { method: 'PATCH', json: { paidCents: total } });
+    expect(res.status).toBe(200);
+    expect(writes()).toBe(before + 1);
+    const synced = (await adminOrder(code)).events.filter((e) => e.type === 'calendar_synced');
+    expect(synced).toHaveLength(2);
+  });
+});
+
 describe('reembolsos', () => {
   it('transferencia: se devuelve completo lo pagado', async () => {
     const created = await create();

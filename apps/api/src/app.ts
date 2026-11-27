@@ -27,7 +27,7 @@ import {
 import { type Context, Hono } from 'hono';
 import { z } from 'zod';
 import { bookingsBetween, insertOrder, transition } from './db';
-import { onOrderCreated, onStatusChanged } from './effects';
+import { onOrderCreated, onPaymentUpdated, onStatusChanged } from './effects';
 import { type AppEnv, type Env, settingsFor } from './env';
 import { createPreference, feeCents, getPayment, toCents, verifySignature } from './mercadopago';
 import { type EventRow, getOrder, logEvent, type OrderRow, toAdminOrder, toPublicOrder } from './orders';
@@ -460,6 +460,8 @@ app.patch('/api/admin/orders/:code', async (c) => {
         });
       current = updated;
       background(c, onStatusChanged(env, current, row.status, settings, 'admin'));
+      if (current.status === row.status)
+        background(c, onPaymentUpdated(env, current, row.paid_cents, settings));
     }
   }
   if (note) await logEvent(env.DB, code, 'note', note);
