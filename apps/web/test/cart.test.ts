@@ -2,9 +2,8 @@ import { leadTimeMessage, defaultMenu as menu, defaultSettings as settings } fro
 import { describe, expect, it } from 'vitest';
 import {
   addLine,
-  canEnter,
-  type FlowProgress,
-  furthestStep,
+  cartProgress,
+  checkoutIssues,
   leadTimeChangeNotice,
   nextTierHint,
   quoteCart,
@@ -82,26 +81,34 @@ describe('anticipación según tamaño (24 → 25 bebidas)', () => {
   });
 });
 
-describe('orden de los pasos', () => {
-  const none: FlowProgress = { quoteOk: false, slot: null, customerValid: false, plan: null };
+describe('barra del carrito', () => {
+  it('cuenta lo que falta para el mínimo', () => {
+    expect(cartProgress(4, settings)).toEqual({
+      label: 'Te faltan 2 bebidas para el mínimo de 6',
+      ratio: 4 / 6,
+    });
+    expect(cartProgress(5, settings).label).toBe('Te falta 1 bebida para el mínimo de 6');
+  });
+
+  it('informa el siguiente descuento y el que ya tienes', () => {
+    expect(cartProgress(6, settings).label).toBe('5 % de descuento · agrega 6 y obtén 10 %');
+    expect(cartProgress(23, settings).label).toBe('10 % de descuento · agrega 1 y obtén 15 %');
+    expect(cartProgress(30, settings)).toEqual({ label: 'Tienes el 15 % de descuento', ratio: 1 });
+  });
+});
+
+describe('qué falta para pagar', () => {
   const slot = { date: '2026-12-10', time: '10:00' };
+  const ok = { slot, customerErrors: {}, plan: 'deposit' as const, method: 'transfer' };
 
-  it('no pide datos antes de tener total y horario', () => {
-    expect(canEnter('date', none)).toBe(false);
-    expect(canEnter('data', { ...none, quoteOk: true })).toBe(false);
-    expect(canEnter('data', { ...none, slot, customerValid: true })).toBe(false);
-    expect(canEnter('data', { ...none, quoteOk: true, slot })).toBe(true);
+  it('lista lo pendiente en el orden de la página', () => {
+    expect(
+      checkoutIssues({ slot: null, customerErrors: { phone: 'x', name: 'y' }, plan: null, method: null }),
+    ).toEqual(['slot', 'name', 'phone', 'plan', 'method']);
   });
 
-  it('no deja pasar al pago sin elegir plan', () => {
-    const ready = { quoteOk: true, slot, customerValid: true, plan: null };
-    expect(canEnter('review', ready)).toBe(true);
-    expect(canEnter('payment', ready)).toBe(false);
-    expect(canEnter('payment', { ...ready, plan: 'deposit' })).toBe(true);
-    expect(furthestStep(ready)).toBe('review');
-  });
-
-  it('si el carrito deja de ser válido regresa al primer paso', () => {
-    expect(furthestStep({ quoteOk: false, slot, customerValid: true, plan: 'full' })).toBe('build');
+  it('nunca deja pagar sin elegir plan', () => {
+    expect(checkoutIssues({ ...ok, plan: null })).toEqual(['plan']);
+    expect(checkoutIssues(ok)).toEqual([]);
   });
 });

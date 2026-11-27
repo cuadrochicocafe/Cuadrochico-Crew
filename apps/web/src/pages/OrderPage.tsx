@@ -11,6 +11,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { api, apiErrorMessage, toApiError } from '../api';
 import { CancellationPolicy } from '../components/CancellationPolicy';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { CopyButton } from '../components/CopyButton';
 import { Lines } from '../components/Lines';
 import { contactLink, formatInstant, formatLocalDate, STATUS_LABEL } from '../lib';
 
@@ -49,6 +50,44 @@ export function OrderPage({ settings, code, token }: { settings: Settings; code:
   );
 }
 
+const HEADLINE: Record<PublicOrder['status'], string> = {
+  pending_payment: '¡Ya casi! Falta tu pago',
+  confirmed: '¡Listo! Ya estamos en ello',
+  ready: 'Tu pedido está listo',
+  completed: 'Pedido entregado. ¡Gracias!',
+  cancelled: 'Pedido cancelado',
+  expired: 'El pedido venció',
+};
+
+const TRACK = [
+  { label: 'Pedido recibido', statuses: ['pending_payment', 'confirmed', 'ready', 'completed'] },
+  { label: 'Pago confirmado', statuses: ['confirmed', 'ready', 'completed'] },
+  { label: 'Listo para recoger', statuses: ['ready', 'completed'] },
+  { label: 'Entregado', statuses: ['completed'] },
+] as const;
+
+/** Seguimiento del pedido. Cancelados y vencidos no lo muestran: ahí la página lo explica en texto. */
+function Tracker({ status }: { status: PublicOrder['status'] }) {
+  if (status === 'cancelled' || status === 'expired') return null;
+  const done = TRACK.filter((s) => (s.statuses as readonly string[]).includes(status)).length;
+  return (
+    <ol class="tracker" aria-label="Avance del pedido">
+      {TRACK.map((s, i) => {
+        const state = i < done ? 'done' : i === done ? 'next' : '';
+        return (
+          <li key={s.label} class={state} aria-current={i === done - 1 ? 'step' : undefined}>
+            <span class="dot" aria-hidden="true" />
+            <span>
+              {s.label}
+              {i < done && <span class="sr-only"> (hecho)</span>}
+            </span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 interface ViewProps {
   settings: Settings;
   order: PublicOrder;
@@ -81,12 +120,14 @@ export function OrderView({ settings, order, payment, onCancel }: ViewProps) {
 
   return (
     <article class="order" aria-labelledby="order-title">
+      <p class="eyebrow">Pedido {order.code}</p>
       <h2 id="order-title" tabIndex={-1}>
-        Pedido {order.code}
+        {HEADLINE[order.status]}
       </h2>
-      <p class="status" role="status">
-        <strong>{STATUS_LABEL[order.status]}</strong>
+      <p class="status sr-only" role="status">
+        {STATUS_LABEL[order.status]}
       </p>
+      <Tracker status={order.status} />
       <p class="muted small">Guarda este enlace: con él puedes consultar tu pedido cuando quieras.</p>
 
       {order.status === 'pending_payment' && payment && (
@@ -104,11 +145,15 @@ export function OrderView({ settings, order, payment, onCancel }: ViewProps) {
               </div>
               <div>
                 <dt>CLABE</dt>
-                <dd class="mono">{payment.clabe}</dd>
+                <dd class="mono">
+                  {payment.clabe} <CopyButton value={payment.clabe} label="CLABE" />
+                </dd>
               </div>
               <div>
                 <dt>Concepto</dt>
-                <dd class="mono">{payment.reference}</dd>
+                <dd class="mono">
+                  {payment.reference} <CopyButton value={payment.reference} label="concepto" />
+                </dd>
               </div>
               <div>
                 <dt>Monto</dt>

@@ -107,48 +107,60 @@ export function leadTimeChangeNotice(
   return `Tu pedido ahora es de ${drinks} bebidas, así que necesitamos ${direction} anticipación y cambiaron las fechas disponibles. ${leadTimeMessage(drinks, settings)}`;
 }
 
-// ---------- Pasos del flujo
+// ---------- Barra del carrito
 
-export const STEPS = ['build', 'date', 'data', 'review', 'payment'] as const;
-export type Step = (typeof STEPS)[number];
-
-export const STEP_TITLES: Record<Step, string> = {
-  build: 'Arma tu pedido',
-  date: 'Fecha y hora',
-  data: 'Tus datos',
-  review: 'Revisa tu pedido',
-  payment: 'Pago',
-};
-
-export interface FlowProgress {
-  quoteOk: boolean;
-  slot: { date: string; time: string } | null;
-  customerValid: boolean;
-  plan: PaymentPlan | null;
+export interface CartProgress {
+  /** Texto corto para la barra: mínimo, siguiente descuento o descuento aplicado. */
+  label: string;
+  /** Avance hacia la siguiente meta (mínimo o siguiente nivel), de 0 a 1. */
+  ratio: number;
 }
 
-/**
- * Se puede entrar a un paso solo si los anteriores están completos:
- * nunca se piden datos sin haber visto el total, ni se paga sin elegir plan.
- */
-export function canEnter(step: Step, p: FlowProgress): boolean {
-  switch (step) {
-    case 'build':
-      return true;
-    case 'date':
-      return p.quoteOk;
-    case 'data':
-      return p.quoteOk && p.slot !== null;
-    case 'review':
-      return p.quoteOk && p.slot !== null && p.customerValid;
-    case 'payment':
-      return p.quoteOk && p.slot !== null && p.customerValid && p.plan !== null;
+/** Progreso hacia el mínimo y los niveles de descuento. Informativo: nunca presiona ni inventa urgencia. */
+export function cartProgress(drinks: number, settings: Settings): CartProgress {
+  const min = settings.minDrinks;
+  if (drinks < min) {
+    const n = min - drinks;
+    return {
+      label: `Te ${n === 1 ? 'falta 1 bebida' : `faltan ${n} bebidas`} para el mínimo de ${min}`,
+      ratio: drinks / min,
+    };
   }
+  const tiers = [...settings.discountTiers].sort((a, b) => a.minDrinks - b.minDrinks);
+  let current = 0;
+  let from = min;
+  for (const t of tiers)
+    if (drinks >= t.minDrinks) {
+      current = t.percent;
+      from = t.minDrinks;
+    }
+  const next = tiers.find((t) => t.minDrinks > drinks && t.percent > current);
+  if (next) {
+    const n = next.minDrinks - drinks;
+    const prefix = current ? `${current} % de descuento · ` : '';
+    return {
+      label: `${prefix}agrega ${n} y obtén ${next.percent} %`,
+      ratio: (drinks - from) / (next.minDrinks - from),
+    };
+  }
+  return { label: current ? `Tienes el ${current} % de descuento` : 'Listo para pedir', ratio: 1 };
 }
 
-/** El paso más avanzado al que se puede llegar; sirve para regresar si algo se invalidó. */
-export function furthestStep(p: FlowProgress): Step {
-  let last: Step = 'build';
-  for (const s of STEPS) if (canEnter(s, p)) last = s;
-  return last;
+// ---------- Checkout
+
+export type CheckoutField = 'slot' | 'name' | 'phone' | 'email' | 'address' | 'plan' | 'method';
+
+/** Lo que falta para poder pagar, en el orden en que aparece en la página. Nunca se paga sin elegir plan. */
+export function checkoutIssues(p: {
+  slot: { date: string; time: string } | null;
+  customerErrors: Partial<Record<'name' | 'phone' | 'email' | 'address', string>>;
+  plan: PaymentPlan | null;
+  method: string | null;
+}): CheckoutField[] {
+  const out: CheckoutField[] = [];
+  if (!p.slot) out.push('slot');
+  for (const k of ['name', 'phone', 'email', 'address'] as const) if (p.customerErrors[k]) out.push(k);
+  if (!p.plan) out.push('plan');
+  if (!p.method) out.push('method');
+  return out;
 }
