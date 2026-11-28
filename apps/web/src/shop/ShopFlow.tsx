@@ -130,7 +130,8 @@ export function ShopFlow({ menu, settings }: { menu: Menu; settings: Settings })
   const loadAvailability = (count: number, previous: number | null) => {
     setAvailability({ status: 'loading' });
     api
-      .availability(count)
+      // Hoy + hasta maxDaysAhead: el calendario muestra todos los meses que se pueden pedir (la API acepta hasta 62).
+      .availability(count, Math.min(settings.maxDaysAhead + 1, 62))
       .then(({ days }) => {
         const found: string[] = [];
         const change = leadTimeChangeNotice(previous, count, settings);

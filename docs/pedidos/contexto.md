@@ -41,9 +41,11 @@ Sin investigación directa con clientes todavía **[SUPUESTO]**. Antes de invert
 - **Forma de pago:** el cliente elige entre anticipo del 50 % o liquidar el 100 %. Se cobra ese monto por Mercado Pago o transferencia.
 - **Cancelación:**
   - Se puede cancelar desde la página del pedido hasta 72 h antes de la hora de entrega.
-  - Si se cancela a tiempo se devuelve todo lo pagado: la transferencia completa; Mercado Pago menos la comisión real que cobró (se guarda del webhook).
+  - Si se cancela a tiempo se devuelve todo lo pagado, con cualquier método (decisión del dueño: no se descuenta la comisión).
   - Un pedido creado con menos de 72 h de anticipación no se puede cancelar ni reembolsar, y se avisa claramente antes de pagar.
-  - El reembolso lo hace el equipo a mano en la v1; el admin muestra el monto a devolver y el equipo recibe aviso por Telegram.
+  - Mercado Pago se reembolsa solo, por su API, en cuanto el cliente cancela a tiempo. Si falla (por ejemplo, sin saldo en la cuenta), queda en la bitácora y el equipo recibe aviso para hacerlo a mano.
+  - La transferencia la devuelve el equipo a mano; el admin muestra el monto y el estado del reembolso, y el equipo recibe aviso por Telegram.
+  - Si el equipo cancela desde el admin, no se reembolsa solo.
   - El texto de la política sale de una sola función de core (`cancellationPolicyText`) para que sea idéntico antes de pagar y en la página del pedido.
 - **Entrega:** recoger en Av. Fundadores 5296, Torre Elysium. El envío a domicilio está desactivado **[SUPUESTO]**.
 - **Horarios de entrega:** de lunes a viernes de 8:00 a 21:00, y fines de semana de 9:00 a 20:00 **[SUPUESTO, sacado de los turnos del equipo]**.

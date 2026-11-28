@@ -95,11 +95,7 @@ export function toPublicOrder(r: OrderRow, settings: Settings, now = new Date())
 export function refundCentsFor(r: OrderRow, settings: Settings): number | null {
   if (r.status !== 'cancelled' || r.paid_cents <= 0) return null;
   if (!isRefundableOrder(new Date(r.created_at), slotOf(r), settings)) return null;
-  return refundFor({
-    paidCents: r.paid_cents,
-    paymentMethod: r.payment_method,
-    providerFeeCents: r.provider_fee_cents ?? 0,
-  });
+  return refundFor({ paidCents: r.paid_cents });
 }
 
 export function toAdminOrder(

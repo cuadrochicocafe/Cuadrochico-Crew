@@ -110,6 +110,8 @@ export interface Outbound {
   calendar: { method: string; url: string; body: Record<string, unknown> | null }[];
   tokenRequests: number;
   payments: Map<string, MpPayment>;
+  refunds: { paymentId: string; idempotencyKey: string | null }[];
+  refundStatus: number;
   calendarStatus: number;
   captchaOk: boolean;
 }
@@ -127,6 +129,8 @@ export function mockOutbound(): Outbound {
     calendar: [],
     tokenRequests: 0,
     payments: new Map(),
+    refunds: [],
+    refundStatus: 201,
     calendarStatus: 200,
     captchaOk: true,
   };
@@ -142,6 +146,13 @@ export function mockOutbound(): Outbound {
       const body = JSON.parse(text) as Record<string, unknown>;
       out.preferences.push(body);
       return json({ id: 'pref-1', init_point: `https://mp.test/checkout/${body.external_reference}` }, 201);
+    }
+    const refund = url.pathname.match(/^\/v1\/payments\/([^/]+)\/refunds$/);
+    if (url.host === 'api.mercadopago.com' && refund && req.method === 'POST') {
+      out.refunds.push({ paymentId: refund[1] ?? '', idempotencyKey: req.headers.get('x-idempotency-key') });
+      return out.refundStatus === 201
+        ? json({ id: 1, status: 'approved' }, 201)
+        : json({ message: 'insufficient_amount' }, out.refundStatus);
     }
     if (url.host === 'api.mercadopago.com' && url.pathname.startsWith('/v1/payments/')) {
       const p = out.payments.get(url.pathname.split('/').pop() ?? '');

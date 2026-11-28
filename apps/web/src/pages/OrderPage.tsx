@@ -265,8 +265,8 @@ export function OrderView({ settings, order, payment, onCancel }: ViewProps) {
         >
           {deadline && <p>Puedes cancelar hasta el {deadline}.</p>}
           <p>
-            El reembolso lo hace el equipo a mano: las transferencias se devuelven completas y los pagos con
-            Mercado Pago, menos la comisión que cobra Mercado Pago.
+            Te devolvemos todo lo que pagaste: si pagaste con Mercado Pago el reembolso es automático; si fue
+            por transferencia, te la devolvemos nosotros.
           </p>
           <p>Esta acción no se puede deshacer.</p>
         </ConfirmDialog>

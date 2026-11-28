@@ -193,18 +193,61 @@ describe('reembolsos', () => {
     expect(out.calendar.some((c) => c.method === 'DELETE' && c.url.endsWith(eventIdFor(code)))).toBe(true);
     const notice = out.telegram.find((t) => t.includes('canceló'));
     expect(notice).toContain('Devolver a mano');
+    expect(out.refunds).toHaveLength(0);
   });
 
-  it('Mercado Pago: se devuelve lo pagado menos la comisión real', async () => {
+  it('Mercado Pago: al cancelar se reembolsa el total automáticamente', async () => {
     const { created, id } = await mpOrderWithPayment('full', 99.99);
     await signedWebhook(id);
+    const code = created.order.code;
+    const res = await call(`/api/orders/${code}/cancel?t=${created.accessToken}`, { method: 'POST' });
+    expect(res.status).toBe(200);
+    expect(out.refunds).toEqual([{ paymentId: id, idempotencyKey: `refund-${code}` }]);
+    const o = await adminOrder(code);
+    expect(o.providerFeeCents).toBe(10049);
+    expect(o.refundCents).toBe(created.payment.amountCents);
+    expect(o.events.map((e) => e.type)).toContain('mp_refund');
+    const notice = out.telegram.find((t) => t.includes('canceló'));
+    expect(notice).toContain('Reembolsado automáticamente por Mercado Pago');
+    expect(notice).not.toContain('Devolver a mano');
+  });
+
+  it('Mercado Pago: si el reembolso falla, queda en la bitácora y se avisa para hacerlo a mano', async () => {
+    out.refundStatus = 400;
+    const { created, id } = await mpOrderWithPayment('deposit');
+    await signedWebhook(id);
+    const code = created.order.code;
+    await call(`/api/orders/${code}/cancel?t=${created.accessToken}`, { method: 'POST' });
+    const o = await adminOrder(code);
+    expect(o.status).toBe('cancelled');
+    expect(o.events.find((e) => e.type === 'mp_refund_error')?.detail).toContain('400');
+    expect(out.telegram.find((t) => t.includes('canceló'))).toContain('Devolver a mano');
+  });
+
+  it('Mercado Pago sin pago: cancelar no intenta reembolsar', async () => {
+    const created = await create(orderInput({ paymentMethod: 'mercadopago' }));
+    await call(`/api/orders/${created.order.code}/cancel?t=${created.accessToken}`, { method: 'POST' });
+    expect(out.refunds).toHaveLength(0);
+  });
+
+  it('el admin cancelando no reembolsa solo', async () => {
+    const { created, id } = await mpOrderWithPayment();
+    await signedWebhook(id);
+    await admin(`/api/admin/orders/${created.order.code}`, {
+      method: 'PATCH',
+      json: { status: 'cancelled' },
+    });
+    expect(out.refunds).toHaveLength(0);
+  });
+
+  it('un pedido hecho con menos de 72 h no se puede cancelar ni se reembolsa', async () => {
+    const { slotBetween } = await import('./helpers');
+    const created = await create(orderInput({ paymentMethod: 'mercadopago', slot: slotBetween(50, 70) }));
     const res = await call(`/api/orders/${created.order.code}/cancel?t=${created.accessToken}`, {
       method: 'POST',
     });
-    expect(res.status).toBe(200);
-    const o = await adminOrder(created.order.code);
-    expect(o.providerFeeCents).toBe(10049);
-    expect(o.refundCents).toBe(created.payment.amountCents - 10049);
+    expect(res.status).toBe(409);
+    expect(out.refunds).toHaveLength(0);
   });
 
   it('cancelado sin pagos: refundCents es null', async () => {

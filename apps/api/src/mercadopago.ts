@@ -55,6 +55,23 @@ export async function getPayment(accessToken: string, id: string): Promise<Payme
   return (await res.json()) as Payment;
 }
 
+/**
+ * Reembolso total del pago (sin `amount`, Mercado Pago devuelve todo).
+ * `idempotencyKey` evita reembolsar dos veces si se reintenta.
+ */
+export async function refundPayment(accessToken: string, id: string, idempotencyKey: string): Promise<void> {
+  const res = await fetch(`${API}/v1/payments/${encodeURIComponent(id)}/refunds`, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      'x-idempotency-key': idempotencyKey,
+    },
+    body: '{}',
+  });
+  if (!res.ok) throw new Error(`Mercado Pago respondió ${res.status}: ${await res.text()}`);
+}
+
 export const toCents = (amount: number) => Math.round(amount * 100);
 
 /** Comisión real cobrada por Mercado Pago, en centavos (suma de `fee_details`). */

@@ -21,6 +21,7 @@ import { contactLink, focusSoon, formatLocalDate, plural } from '../lib';
 import { type CheckoutField, checkoutIssues } from '../order/cart';
 import { mountTurnstile, TURNSTILE_SITE_KEY } from '../turnstile';
 import { type CustomerDraft, validateCustomer } from './customer';
+import { DateCalendar } from './DateCalendar';
 
 export type AvailabilityState =
   | { status: 'loading' }
@@ -208,29 +209,7 @@ export function Checkout(props: Props) {
           <>
             <fieldset class="bare" aria-describedby="lead-time date-reasons">
               <legend class="sr-only">Fecha</legend>
-              <div class="day-row">
-                {days.map((d) => (
-                  <label key={d.date} class={d.problem ? 'day off' : 'day'}>
-                    <input
-                      type="radio"
-                      name="date"
-                      value={d.date}
-                      disabled={!!d.problem}
-                      checked={pickedDate === d.date}
-                      onChange={() => pickDate(d.date)}
-                    />
-                    <span class="dow">
-                      {formatLocalDate(d.date, { day: undefined, month: undefined, weekday: 'short' })}
-                    </span>
-                    <span class="dnum">
-                      {formatLocalDate(d.date, { weekday: undefined, month: undefined })}
-                    </span>
-                    <span class="mon">
-                      {formatLocalDate(d.date, { weekday: undefined, day: undefined, month: 'short' })}
-                    </span>
-                  </label>
-                ))}
-              </div>
+              <DateCalendar days={days} picked={pickedDate} onPick={pickDate} />
               <ul id="date-reasons" class="reasons">
                 {reasons(
                   days.map((d) => d.problem),
