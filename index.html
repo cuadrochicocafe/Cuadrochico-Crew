@@ -274,13 +274,6 @@ const Logic = {
     push(enc.encode(x + 'trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n' + xo + '\n%%EOF\n'));
     const out = new Uint8Array(len); let p = 0; parts.forEach(b => { out.set(b, p); p += b.length; }); return out;
   },
-  async hashPin(pin, saltB64, iter){
-    if (!(typeof crypto !== 'undefined' && crypto.subtle)) throw new Error('Este navegador no permite verificar el PIN. Abre la página con https.');
-    const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(String(pin)), 'PBKDF2', false, ['deriveBits']);
-    const salt = Uint8Array.from(atob(saltB64), c => c.charCodeAt(0));
-    const bits = await crypto.subtle.deriveBits({name: 'PBKDF2', hash: 'SHA-256', salt: salt, iterations: iter}, key, 256);
-    return btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(bits))));
-  },
   hoyISO(d){ const p = n => String(n).padStart(2, '0'); return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); },
   tkey(t){ return t.momento + '|' + t.tarea; },
   horarioDeTurnos: {semana: {Matutino: [7 * 60 + 30, 15 * 60 + 30], Vespertino: [13 * 60 + 30, 21 * 60 + 30]}, finde: {Matutino: [8 * 60 + 30, 16 * 60 + 30], Vespertino: [12 * 60 + 30, 20 * 60 + 30]}},
@@ -776,14 +769,17 @@ const Buzon = {
     d.outbox = d.outbox.filter(e => !(e.ok && ahora - e.ult > 3 * 86400000)); Hist.guarda(d); return true;
   }
 };
+const PEDIDOS_API = 'https://cuadrochico-pedidos.cuadrochico-api.workers.dev';
 const Local = {
   async users(){ const u = window.USUARIOS; if (!Array.isArray(u) || !u.length) throw new Error('sin usuarios'); return u.map(x => x.n); },
   async login(n, p){
-    const bloq = store.get('cc_bloqueo'); if (bloq && bloq.hasta > Date.now()) throw new Error('Demasiados intentos. Espera un minuto.');
-    const u = (window.USUARIOS || []).find(x => x.n === n);
-    const ok = u && (await Logic.hashPin(p, u.s, u.i)) === u.h;
-    if (!ok) { const f = (store.get('cc_fallos') || 0) + 1; if (f >= 5) { store.set('cc_bloqueo', {hasta: Date.now() + 60000}); store.set('cc_fallos', 0); } else store.set('cc_fallos', f); throw new Error('Nombre o PIN incorrecto'); }
-    store.set('cc_fallos', 0); return {token: 'local', nombre: u.n, rol: u.r === 'Gerente' ? 'Gerente' : 'Barista'};
+    // El PIN se valida en el servidor; las huellas viven en un secreto de Cloudflare, no en este repo.
+    let r; try { r = await fetch(PEDIDOS_API + '/api/staff/login', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({name: n, pin: String(p)})}); }
+    catch (e) { throw new Error('Sin conexión. Para entrar necesitas internet.'); }
+    const d = await r.json().catch(() => ({}));
+    if (r.status === 400 || r.status === 401) throw new Error('Nombre o PIN incorrecto');
+    if (!r.ok) throw new Error(d.message || 'No se pudo entrar. Intenta de nuevo.');
+    return {token: d.token, nombre: d.name, rol: d.role === 'manager' ? 'Gerente' : 'Barista'};
   },
   async catalog(){
     const cat = Object.assign({origen: 'copia'}, EMBED);
@@ -987,15 +983,22 @@ function vistaHome(){
   if (!GAS && (!S.sinc || Date.now() - S.sinc > 60000)) { S.sinc = Date.now(); Buzon.sincronizar().then(() => { subeConteosLocales(); if (!S.modulo) pintaBadges(); }); }
   return '<h2 class="hola">Hola, ' + esc(S.user) + '</h2><div class="mut">¿Qué vas a hacer?</div><div class="mods">' +
     mods.map(m => '<button class="mod" data-modulo="' + m.id + '">' + m.i + '<span><span class="t">' + m.t + '</span><small>' + m.s + '</small><span class="bdg" id="bdg-' + m.id + '"></span></span></button>').join('') +
-    '<a class="mod" style="text-decoration:none" href="https://cuadrochico-pedidos.cuadrochico-api.workers.dev/admin" target="_blank" rel="noopener"><span><span class="t">Pedidos de mayoreo</span><small>Pedidos de clientes, pagos y producción del día</small></span></a></div>';
+    '<button class="mod" data-modulo="pedidos"><span><span class="t">Pedidos de mayoreo</span><small>Pedidos de clientes, pagos y producción del día</small></span></button></div>';
 }
 function irA(m){
   aplicaCatPend(false);
-  S.modulo = m; S.tab = m === 'inventario' ? 'conteo' : m === 'horarios' ? 'semana' : m === 'recetas' ? 'recetario' : 'turno'; render();
+  S.modulo = m; S.tab = m === 'inventario' ? 'conteo' : m === 'horarios' ? 'semana' : m === 'recetas' ? 'recetario' : m === 'pedidos' ? 'pedidos' : 'turno'; render();
   if (m === 'horarios') Buzon.sincronizar().then(() => { if (S.modulo === 'horarios') renderSiLibre(); });
   if (m === 'turno') Buzon.sincronizar().then(() => { if (S.modulo === 'turno' && S.tab === 'turno' && S.turno && !Object.keys(S.turno.resp).length && !Object.keys(S.turno.relevo).length) render(); });
 }
+/** El panel de pedidos vive en el servidor de pedidos; se abre aquí adentro con la misma sesión (sin volver a pedir el PIN). */
+function vistaPedidos(){
+  const url = PEDIDOS_API + '/admin' + (typeof S.token === 'string' && S.token.indexOf('s.') === 0 ? '#sesion=' + encodeURIComponent(S.token) : '');
+  return '<iframe src="' + esc(url) + '" title="Pedidos de mayoreo" style="display:block;width:100%;height:calc(100vh - 170px);min-height:480px;border:1px solid #e3dccd;border-radius:12px;background:#fff"></iframe>' +
+    '<p class="mut" style="margin-top:8px"><a href="' + esc(url) + '" target="_blank" rel="noopener">Abrir en otra pestaña</a></p>';
+}
 function tabsModulo(){
+  if (S.modulo === 'pedidos') return '';
   const ger = S.rol === 'Gerente', R = S.resultado && S.resultado.modulo === S.modulo, tb = (id, txt) => '<button class="chip ' + (S.tab === id ? 'on' : '') + '" data-tab="' + id + '">' + txt + '</button>';
   if (S.modulo === 'inventario') return '<div class="tabs">' + tb('conteo', 'Conteo') + tb('agotado', 'Agotado') + (R ? tb('resultado', 'Resultado') : '') + (ger ? tb('compras', 'Compras') : '') + (GAS ? '' : tb('historial', 'Historial')) + '</div>';
   if (S.modulo === 'recetas') return '<div class="tabs">' + tb('recetario', 'Recetario') + (S.rol === 'Gerente' ? tb('calculadora', 'Calculadora') + tb('costos', 'Costos') : '') + '</div>';
@@ -1026,8 +1029,8 @@ function render(){
   let h;
   if (!S.modulo) h = '<div class="top"><img class="logo logo-head" src="logo_cuadrochico.svg" alt="Cuadrochico · Barra de café">' + quien + '</div>' + aviso() + vistaHome() + pie();
   else {
-    h = '<div class="top"><button class="link back" id="home">‹ Inicio</button>' + quien + '</div><h1 class="mt">' + (S.modulo === 'inventario' ? 'Inventario' : S.modulo === 'horarios' ? 'Horarios' : S.modulo === 'recetas' ? 'Recetario' : 'Turno') + '</h1>' + aviso() + tabsModulo();
-    h += S.tab === 'conteo' ? vistaConteo() : S.tab === 'agotado' ? vistaAgotado() : S.tab === 'resultado' ? vistaResultado() : S.tab === 'historial' ? vistaHistorial() : S.tab === 'turno' ? vistaTurno() : S.tab === 'avisos' ? vistaAvisos() : S.tab === 'semana' ? vistaSemana() : S.tab === 'peticiones' ? vistaPeticiones() : S.tab === 'revisar' && S.rol === 'Gerente' ? vistaRevisar() : S.tab === 'recetario' ? vistaRecetario() : S.tab === 'calculadora' ? vistaCalc() : S.tab === 'costos' ? vistaCostos() : vistaCompras();
+    h = '<div class="top"><button class="link back" id="home">‹ Inicio</button>' + quien + '</div><h1 class="mt">' + (S.modulo === 'inventario' ? 'Inventario' : S.modulo === 'horarios' ? 'Horarios' : S.modulo === 'recetas' ? 'Recetario' : S.modulo === 'pedidos' ? 'Pedidos de mayoreo' : 'Turno') + '</h1>' + aviso() + tabsModulo();
+    h += S.tab === 'pedidos' ? vistaPedidos() : S.tab === 'conteo' ? vistaConteo() : S.tab === 'agotado' ? vistaAgotado() : S.tab === 'resultado' ? vistaResultado() : S.tab === 'historial' ? vistaHistorial() : S.tab === 'turno' ? vistaTurno() : S.tab === 'avisos' ? vistaAvisos() : S.tab === 'semana' ? vistaSemana() : S.tab === 'peticiones' ? vistaPeticiones() : S.tab === 'revisar' && S.rol === 'Gerente' ? vistaRevisar() : S.tab === 'recetario' ? vistaRecetario() : S.tab === 'calculadora' ? vistaCalc() : S.tab === 'costos' ? vistaCostos() : vistaCompras();
     h += pie();
   }
   $('#app').innerHTML = h; logosRespaldo();
