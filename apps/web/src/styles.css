@@ -123,7 +123,7 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.6rem max(1rem, calc((100% - 46rem) / 2));
+  padding: 0.6rem max(1rem, calc((100% - 44rem) / 2));
   background: rgb(255 253 248 / 0.94);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--line);
@@ -325,7 +325,7 @@ input[aria-invalid="true"] {
 /* Radios y opciones con apariencia de botón: el input sigue ahí para teclado y lectores de pantalla. */
 .pill,
 .option,
-.day,
+.cal-day,
 .time {
   position: relative;
   cursor: pointer;
@@ -333,7 +333,7 @@ input[aria-invalid="true"] {
 
 .pill input,
 .option input,
-.day input,
+.cal-day input,
 .time input {
   position: absolute;
   opacity: 0;
@@ -346,7 +346,7 @@ input[aria-invalid="true"] {
 
 .pill:has(input:focus-visible),
 .option:has(input:focus-visible),
-.day:has(input:focus-visible),
+.cal-day:has(input:focus-visible),
 .time:has(input:focus-visible) {
   outline: 3px solid var(--blue);
   outline-offset: 2px;
@@ -584,7 +584,7 @@ input[aria-invalid="true"] {
   right: 0;
   bottom: 0;
   z-index: 20;
-  padding: 0.6rem max(1rem, calc((100% - 46rem) / 2)) calc(0.75rem + env(safe-area-inset-bottom));
+  padding: 0.6rem max(1rem, calc((100% - 44rem) / 2)) calc(0.75rem + env(safe-area-inset-bottom));
   background: var(--paper);
   border-top: 1px solid var(--line);
   box-shadow: 0 -6px 24px rgb(19 41 61 / 0.12);
@@ -1013,56 +1013,86 @@ input[aria-invalid="true"] {
   font: 700 0.95rem var(--sans);
 }
 
-.day-row {
-  display: flex;
-  gap: 0.5rem;
-  overflow-x: auto;
-  padding: 0.25rem 0.1rem 0.5rem;
-  margin: 0 -0.1rem;
-  scroll-snap-type: x proximity;
-  scrollbar-width: none;
-}
-
-.day-row::-webkit-scrollbar,
 .cat-tabs::-webkit-scrollbar {
   display: none;
 }
 
-.day {
-  flex: none;
+.cal {
+  max-width: 24rem;
+  margin: 0.25rem auto 0.5rem;
+}
+
+.cal-head {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  width: 64px;
-  padding: 0.5rem 0;
-  border: 1.5px solid var(--line-strong);
-  border-radius: 14px;
-  background: #fff;
-  scroll-snap-align: start;
-  line-height: 1.15;
+  justify-content: space-between;
+  margin-bottom: 0.35rem;
 }
 
-.day .dow,
-.day .mon {
-  font-size: 0.78rem;
-  text-transform: capitalize;
-  color: var(--muted);
-}
-
-.day .dnum {
-  font-size: 1.3rem;
+.cal-title {
+  margin: 0;
   font-weight: 700;
 }
 
-.day:has(input:checked) {
+.cal-title::first-letter {
+  text-transform: uppercase;
+}
+
+.cal-nav {
+  width: 44px;
+  height: 44px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--blue);
+  font: 700 1.4rem / 1 var(--sans);
+  cursor: pointer;
+}
+
+.cal-nav:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.3rem;
+  text-align: center;
+}
+
+.cal-dow {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.cal-day {
+  display: grid;
+  place-items: center;
+  height: 44px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 12px;
+  background: #fff;
+  font-weight: 600;
+}
+
+.cal-day:has(input:checked) {
   background: var(--blue);
   border-color: var(--blue);
   color: var(--cream);
 }
 
-.day:has(input:checked) .dow,
-.day:has(input:checked) .mon {
-  color: #dfe6ec;
+.cal-day.off,
+.cal-day.out {
+  border-color: transparent;
+  background: transparent;
+  font-weight: 400;
+}
+
+.cal-day.out {
+  color: var(--muted);
+  opacity: 0.45;
 }
 
 .time-grid {
@@ -1092,7 +1122,6 @@ input[aria-invalid="true"] {
   opacity: 0.45;
 }
 
-.day.off,
 .time.off span {
   border-style: dashed;
   background: transparent;
@@ -1172,7 +1201,7 @@ input[aria-invalid="true"] {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.75rem max(1rem, calc((100% - 46rem) / 2)) calc(0.75rem + env(safe-area-inset-bottom));
+  padding: 0.75rem max(1rem, calc((100% - 44rem) / 2)) calc(0.75rem + env(safe-area-inset-bottom));
   background: var(--paper);
   border-top: 1px solid var(--line);
   box-shadow: 0 -6px 24px rgb(19 41 61 / 0.12);

@@ -115,7 +115,8 @@ const enc = encodeURIComponent;
 
 export const api = {
   catalog: () => request<CatalogResponse>('/api/catalog'),
-  availability: (drinks: number) => request<AvailabilityResponse>(`/api/availability${q({ drinks })}`),
+  availability: (drinks: number, days: number) =>
+    request<AvailabilityResponse>(`/api/availability${q({ drinks, days })}`),
   createOrder: (body: CreateOrderRequest) =>
     request<CreateOrderResponse>('/api/orders', { method: 'POST', body: JSON.stringify(body) }),
   order: (code: string, token: string) =>

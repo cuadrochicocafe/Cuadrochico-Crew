@@ -25,8 +25,8 @@ describe('cliente de la API', () => {
   it('devuelve el JSON en respuestas correctas y arma la URL', async () => {
     const f = respond(200, { days: [] });
     vi.stubGlobal('fetch', f);
-    await expect(api.availability(25)).resolves.toEqual({ days: [] });
-    expect(f).toHaveBeenCalledWith('/api/availability?drinks=25', expect.anything());
+    await expect(api.availability(25, 61)).resolves.toEqual({ days: [] });
+    expect(f).toHaveBeenCalledWith('/api/availability?drinks=25&days=61', expect.anything());
   });
 
   it('manda el token del pedido en la query y el de admin como Bearer', async () => {
