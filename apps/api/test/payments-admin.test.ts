@@ -1,5 +1,5 @@
 import { env } from 'cloudflare:test';
-import type { AdminOrder, AdminOrdersResponse, CreateOrderResponse, PrepResponse } from '@cuadrochico/core';
+import type { AdminOrder, AdminOrdersResponse, CreateOrderResponse } from '@cuadrochico/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { eventIdFor } from '../src/calendar';
 import { admin, call, mockOutbound, type Outbound, orderInput, signedWebhook, testEnv } from './helpers';
@@ -271,23 +271,6 @@ describe('admin: pedidos y producción', () => {
     expect(bad.status).toBe(400);
     const missing = await admin('/api/admin/orders/CC-ZZZZ', { method: 'PATCH', json: { note: 'hola' } });
     expect(missing.status).toBe(404);
-  });
-
-  it('la hoja de producción agrupa por bebida y opciones de los pedidos pagados', async () => {
-    const a = await create();
-    const b = await create(orderInput({ slot: a.order.slot }));
-    await create(orderInput({ slot: a.order.slot })); // sin pagar: no cuenta
-    for (const o of [a, b])
-      await admin(`/api/admin/orders/${o.order.code}`, { method: 'PATCH', json: { status: 'confirmed' } });
-    const res = await admin(`/api/admin/prep?date=${a.order.slot.date}`);
-    const body = (await res.json()) as PrepResponse;
-    expect(body.totals).toEqual([
-      { name: 'Cold Brew Latte', variantLabel: 'Regular', options: 'Avena, Vainilla', qty: 12 },
-      { name: 'Matcha Latte', variantLabel: 'Regular', options: 'Entera, Sin jarabe', qty: 12 },
-    ]);
-    expect(body.orders).toHaveLength(2);
-    expect(body.orders[0]).toMatchObject({ status: 'confirmed', drinks: 12, customerName: 'Ana López' });
-    expect((await admin('/api/admin/prep')).status).toBe(400);
   });
 });
 

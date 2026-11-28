@@ -9,7 +9,6 @@ import type {
   CreateOrderRequest,
   CreateOrderResponse,
   OrderResponse,
-  PrepResponse,
   StaffListResponse,
   StaffLoginResponse,
 } from '@cuadrochico/core';
@@ -142,8 +141,6 @@ export const adminApi = {
       headers: bearer(token),
       body: JSON.stringify(body),
     }),
-  prep: (token: string, date: string) =>
-    request<PrepResponse>(`/api/admin/prep${q({ date })}`, { headers: bearer(token) }),
 };
 
 export const staffApi = {

@@ -17,7 +17,6 @@ import {
   type OrderResponse,
   type OrderStatus,
   type PaymentInstructions,
-  type PrepResponse,
   quote,
   quoteErrorMessage,
   type Settings,
@@ -518,34 +517,6 @@ app.patch('/api/admin/orders/:code', async (c) => {
 
   const events = await eventsFor(env.DB, [code]);
   return c.json({ order: toAdminOrder(current, events.get(code) ?? [], settings) });
-});
-
-/** Estados que se preparan: ya pagados (o listos / entregados ese día). */
-const PREP_STATUSES: readonly OrderStatus[] = ['confirmed', 'ready', 'completed'];
-
-app.get('/api/admin/prep', async (c) => {
-  const parsed = z.object({ date: isoDate }).safeParse(c.req.query());
-  if (!parsed.success) return fail(c, 400, { error: 'validation', issues: zodIssues(parsed.error) });
-  const { date } = parsed.data;
-  const inStatuses = PREP_STATUSES.map(() => '?').join(', ');
-  const [totals, orders] = await c.env.DB.batch<Record<string, unknown>>([
-    c.env.DB.prepare(
-      `SELECT i.name AS name, i.variant_label AS variantLabel, i.options_label AS options, SUM(i.qty) AS qty
-       FROM order_items i JOIN orders o ON o.code = i.order_code
-       WHERE o.slot_date = ? AND o.status IN (${inStatuses})
-       GROUP BY i.name, i.variant_label, i.options_label ORDER BY i.name, i.variant_label, qty DESC`,
-    ).bind(date, ...PREP_STATUSES),
-    c.env.DB.prepare(
-      `SELECT code, slot_time AS time, customer_name AS customerName, status, drinks FROM orders
-       WHERE slot_date = ? AND status IN (${inStatuses}) ORDER BY slot_time, created_at`,
-    ).bind(date, ...PREP_STATUSES),
-  ]);
-  const body: PrepResponse = {
-    date,
-    totals: (totals?.results ?? []) as PrepResponse['totals'],
-    orders: (orders?.results ?? []) as PrepResponse['orders'],
-  };
-  return c.json(body);
 });
 
 app.all('/api/*', (c) => fail(c, 404, { error: 'not_found' }));

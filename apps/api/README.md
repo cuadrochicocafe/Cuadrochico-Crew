@@ -6,16 +6,16 @@ El contrato HTTP está en `packages/core/src/api.ts`.
 
 ## Endpoints
 
-| Método y ruta                                                                         | Qué hace                                                                                                |
-| ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `GET /api/catalog`                                                                    | Menú y configuración pública (métodos de pago habilitados según los secretos).                          |
-| `GET /api/availability?from=&days=&drinks=`                                           | Horarios por día; la anticipación depende de `drinks`.                                                  |
-| `POST /api/orders`                                                                    | Valida, recotiza, verifica horario, aparta `unpaidHoldHours` y devuelve instrucciones de pago.          |
-| `GET /api/orders/:code?t=`                                                            | Pedido del cliente (token secreto). Código o token incorrecto → `not_found`.                            |
-| `POST /api/orders/:code/cancel?t=`                                                    | Cancela en plazo; si no se puede → `not_cancellable`.                                                   |
-| `POST /api/webhooks/mercadopago`                                                      | Valida `x-signature`, consulta el pago y confirma el pedido.                                            |
-| `GET /api/admin/orders`, `PATCH /api/admin/orders/:code`, `GET /api/admin/prep?date=` | Admin con `Authorization: Bearer <sesión o ADMIN_TOKEN>`. Barista: solo listo/entregado.                |
-| `GET /api/staff`, `POST /api/staff/login`                                             | Nombres del equipo y login con PIN personal. Devuelve un token de sesión (14 días) para `/api/admin/*`. |
+| Método y ruta                                            | Qué hace                                                                                                |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `GET /api/catalog`                                       | Menú y configuración pública (métodos de pago habilitados según los secretos).                          |
+| `GET /api/availability?from=&days=&drinks=`              | Horarios por día; la anticipación depende de `drinks`.                                                  |
+| `POST /api/orders`                                       | Valida, recotiza, verifica horario, aparta `unpaidHoldHours` y devuelve instrucciones de pago.          |
+| `GET /api/orders/:code?t=`                               | Pedido del cliente (token secreto). Código o token incorrecto → `not_found`.                            |
+| `POST /api/orders/:code/cancel?t=`                       | Cancela en plazo; si no se puede → `not_cancellable`.                                                   |
+| `POST /api/webhooks/mercadopago`                         | Valida `x-signature`, consulta el pago y confirma el pedido.                                            |
+| `GET /api/admin/orders`, `PATCH /api/admin/orders/:code` | Admin con `Authorization: Bearer <sesión o ADMIN_TOKEN>`. Barista: solo listo/entregado.                |
+| `GET /api/staff`, `POST /api/staff/login`                | Nombres del equipo y login con PIN personal. Devuelve un token de sesión (14 días) para `/api/admin/*`. |
 
 Cron (cada 15 min): pasa a `expired` los pedidos `pending_payment` vencidos.
 

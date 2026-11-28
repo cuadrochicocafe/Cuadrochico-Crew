@@ -27,7 +27,7 @@ Estado al 27 nov 2026. Léelo junto con `CLAUDE.md` y `docs/pedidos/contexto.md`
   - `POST /api/orders`
   - `GET /api/orders/:code?t=`
   - `POST /api/webhooks/mercadopago`
-  - `GET /api/admin/orders`, `PATCH /api/admin/orders/:code` y `GET /api/admin/prep`, con Bearer `ADMIN_TOKEN` y comparación en tiempo constante.
+  - `GET /api/admin/orders`, `PATCH /api/admin/orders/:code`, con Bearer `ADMIN_TOKEN` y comparación en tiempo constante.
 - **Al crear un pedido:**
   - validar con `OrderInputSchema`;
   - recalcular el precio con `quote()`, sin confiar nunca en el cliente;

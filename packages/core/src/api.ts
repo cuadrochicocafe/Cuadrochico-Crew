@@ -168,10 +168,3 @@ export interface AdminUpdateOrderRequest {
   paidCents?: number;
   note?: string;
 }
-
-// GET /api/admin/prep?date=YYYY-MM-DD — qué preparar ese día, agregado por bebida y opciones.
-export interface PrepResponse {
-  date: string;
-  totals: { name: string; variantLabel: string; options: string; qty: number }[];
-  orders: { code: string; time: string; customerName: string; status: OrderStatus; drinks: number }[];
-}
