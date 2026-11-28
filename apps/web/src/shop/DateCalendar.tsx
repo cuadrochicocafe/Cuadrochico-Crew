@@ -1,4 +1,5 @@
 import type { DayAvailability } from '@cuadrochico/core';
+import type { ComponentChildren } from 'preact';
 import { useState } from 'preact/hooks';
 import { formatLocalDate } from '../lib';
 
@@ -19,10 +20,12 @@ interface Props {
   days: DayAvailability[];
   picked: string | null;
   onPick: (date: string) => void;
+  /** Texto bajo el calendario sobre los días del mes que se está viendo (p. ej. por qué no se pueden elegir). */
+  note?: (visible: DayAvailability[]) => ComponentChildren;
 }
 
 /** Calendario de un mes con flechas. Cada día elegible es un radio `name="date"`. */
-export function DateCalendar({ days, picked, onPick }: Props) {
+export function DateCalendar({ days, picked, onPick, note }: Props) {
   const months = [...new Set(days.map((d) => monthOf(d.date)))];
   const firstOpen = days.find((d) => !d.problem)?.date;
   const [month, setMonth] = useState(
@@ -94,6 +97,7 @@ export function DateCalendar({ days, picked, onPick }: Props) {
           );
         })}
       </div>
+      {note?.(days.filter((d) => monthOf(d.date) === month))}
     </div>
   );
 }

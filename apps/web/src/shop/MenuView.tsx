@@ -6,6 +6,7 @@ import {
   type MenuItem,
   type Settings,
 } from '@cuadrochico/core';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import type { CartLine } from '../order/cart';
 import { DrinkArt } from './visuals';
 
@@ -25,6 +26,56 @@ export function MenuView({ menu, settings, cart, onOpen }: Props) {
   const categories = menu.categories
     .map((c) => ({ ...c, items: menu.items.filter((i) => i.categoryId === c.id && isItemAvailable(i)) }))
     .filter((c) => c.items.length);
+  const ids = categories.map((c) => c.id);
+  const [active, setActive] = useState(ids[0] ?? '');
+  const tabs = useRef<HTMLElement>(null);
+
+  // La pestaña activa sigue al scroll: es la última sección cuyo título ya pasó debajo de las pestañas.
+  useEffect(() => {
+    if (ids.length < 2) return;
+    let frame = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const line = (tabs.current?.getBoundingClientRect().bottom ?? 0) + 24;
+        let current = ids[0] ?? '';
+        for (const id of ids) {
+          const top =
+            document.getElementById(`cat-${id}`)?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY;
+          if (top <= line) current = id;
+        }
+        // Al llegar al final, la última categoría cuenta aunque su título no alcance la línea.
+        if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4)
+          current = ids[ids.length - 1] ?? current;
+        setActive(current);
+      });
+    };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', onScroll);
+    };
+  }, [ids.join()]);
+
+  // Que la pestaña activa siempre se vea en la barra (en celular la barra se desliza de lado).
+  // Solo se mueve la barra: un scrollIntoView cortaría el desplazamiento de la página.
+  useEffect(() => {
+    const bar = tabs.current;
+    const tab = bar?.querySelector<HTMLElement>('[aria-current="true"]');
+    if (!bar || !tab) return;
+    const left = tab.offsetLeft - bar.offsetLeft;
+    if (left < bar.scrollLeft || left + tab.offsetWidth > bar.scrollLeft + bar.clientWidth)
+      bar.scrollLeft = left - 16;
+  }, [active]);
+
+  const goTo = (id: string) => {
+    setActive(id);
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    document
+      .getElementById(`cat-${id}`)
+      ?.scrollIntoView?.({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+  };
 
   return (
     <div class="shop">
@@ -47,11 +98,16 @@ export function MenuView({ menu, settings, cart, onOpen }: Props) {
       </section>
 
       {categories.length > 1 && (
-        <nav class="cat-tabs" aria-label="Categorías">
+        <nav class="cat-tabs" aria-label="Categorías" ref={tabs}>
           {categories.map((c) => (
-            <a key={c.id} href={`#cat-${c.id}`}>
+            <button
+              key={c.id}
+              type="button"
+              aria-current={active === c.id ? 'true' : undefined}
+              onClick={() => goTo(c.id)}
+            >
               {c.name}
-            </a>
+            </button>
           ))}
         </nav>
       )}
