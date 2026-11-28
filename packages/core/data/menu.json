@@ -134,22 +134,30 @@
     {
       "id": "cold-brew",
       "name": "Cold Brew",
-      "description": "Café de extracción en frío. Negro o latte con la leche que prefieras.",
+      "description": "Café de extracción en frío. Solo o endulzado.",
       "categoryId": "clasicas",
       "variants": [
         {
-          "id": "negro",
-          "label": "Negro",
+          "id": "regular",
+          "label": "Regular",
           "priceCents": 7500
-        },
-        {
-          "id": "latte",
-          "label": "Latte",
-          "priceCents": 7800,
-          "modifierGroupIds": ["leche"]
         }
       ],
       "modifierGroupIds": ["jarabe"]
+    },
+    {
+      "id": "cold-brew-latte",
+      "name": "Cold Brew Latte",
+      "description": "Cold brew con la leche que prefieras.",
+      "categoryId": "clasicas",
+      "variants": [
+        {
+          "id": "regular",
+          "label": "Regular",
+          "priceCents": 7800
+        }
+      ],
+      "modifierGroupIds": ["leche", "jarabe"]
     },
     {
       "id": "cold-brew-jamaica",

@@ -9,6 +9,7 @@ const PALETTE: Record<string, [string, string]> = {
   'matcha-latte': ['#cfe2b0', '#6f9a48'],
   'chai-latte': ['#ecd0ad', '#a8693a'],
   'cold-brew': ['#b08f74', '#3b271b'],
+  'cold-brew-latte': ['#e6cfb4', '#8b5e3c'],
   'cold-brew-jamaica': ['#f0a3ae', '#97243f'],
   'cold-brew-tonic': ['#e3eef0', '#7a5640'],
   'cold-brew-lemonade': ['#f6e7a1', '#8a6a45'],

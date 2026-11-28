@@ -102,7 +102,7 @@ describe('webhook de Mercado Pago', () => {
     expect(ev.id).toBe(eventIdFor(code));
     expect(ev.id).toMatch(/^[a-v0-9]{5,1024}$/);
     expect(ev.summary).toBe(`${code} · 12 bebidas · Ana`);
-    expect(ev.description).toContain('6 × Cold Brew · Latte · Vainilla, Avena');
+    expect(ev.description).toContain('6 × Cold Brew Latte · Regular · Avena, Vainilla');
     expect(ev.description).toContain('Sin popote');
     expect(ev.description).toContain('Anticipo 50 %');
     expect(ev.description).toContain(`/admin?pedido=${code}`);
@@ -239,7 +239,7 @@ describe('admin: pedidos y producción', () => {
     const res = await admin(`/api/admin/prep?date=${a.order.slot.date}`);
     const body = (await res.json()) as PrepResponse;
     expect(body.totals).toEqual([
-      { name: 'Cold Brew', variantLabel: 'Latte', options: 'Vainilla, Avena', qty: 12 },
+      { name: 'Cold Brew Latte', variantLabel: 'Regular', options: 'Avena, Vainilla', qty: 12 },
       { name: 'Matcha Latte', variantLabel: 'Regular', options: 'Entera, Sin jarabe', qty: 12 },
     ]);
     expect(body.orders).toHaveLength(2);
