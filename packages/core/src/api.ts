@@ -103,7 +103,7 @@ export interface OrderResponse {
 }
 
 // POST /api/orders/:code/cancel?t=token — el cliente cancela en plazo. Responde OrderResponse.
-// El servidor pasa el pedido a `cancelled`, avisa al equipo por Telegram y el reembolso se hace a mano.
+// El servidor pasa el pedido a `cancelled`, avisa al equipo por Telegram y reembolsa Mercado Pago solo (transferencia, a mano).
 
 // Errores: todos los endpoints responden { error } con estos códigos.
 export type ApiError =
@@ -114,10 +114,36 @@ export type ApiError =
   | { error: 'not_cancellable'; problem: CancelProblem; message: string }
   | { error: 'not_found' }
   | { error: 'unauthorized' }
+  | { error: 'forbidden'; message: string }
+  | { error: 'locked'; message: string }
   | { error: 'payment_provider'; message: string }
   | { error: 'internal'; message: string };
 
-// ---------- Administración (Authorization: Bearer <ADMIN_TOKEN>)
+// ---------- Equipo: login con PIN personal
+
+/** Gerente: todo. Barista: ver pedidos y producción, y marcar listo o entregado. */
+export type StaffRole = 'manager' | 'barista';
+
+// GET /api/staff — nombres para el login (sin PINs).
+export interface StaffListResponse {
+  staff: { name: string; role: StaffRole }[];
+}
+
+// POST /api/staff/login — 401 si el PIN no coincide; 429 { error: 'locked' } tras 5 intentos fallidos.
+export interface StaffLoginRequest {
+  name: string;
+  pin: string;
+}
+export interface StaffLoginResponse {
+  /** Va como `Authorization: Bearer <token>` en /api/admin/*. */
+  token: string;
+  name: string;
+  role: StaffRole;
+  expiresAt: string;
+}
+
+// ---------- Administración (Authorization: Bearer <token de sesión> o <ADMIN_TOKEN>)
+// Un barista recibe 403 { error: 'forbidden' } si intenta algo de gerente.
 
 export interface AdminOrder extends PublicOrder {
   customerPhone: string;

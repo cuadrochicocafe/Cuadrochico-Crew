@@ -21,6 +21,7 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   sessionStorage.clear();
+  localStorage.clear();
   history.replaceState(null, '', '/');
 });
 
@@ -337,7 +338,7 @@ describe('admin', () => {
     new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 
   it('resalta el pedido de /admin?pedido=CODE', async () => {
-    sessionStorage.setItem('cc-admin-token', 'secreto');
+    localStorage.setItem('cc-admin-token', 'secreto');
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => json(200, { orders: [adminOrder('CC-AAAA'), adminOrder('CC-BBBB')] })),
@@ -349,7 +350,7 @@ describe('admin', () => {
   });
 
   it('muestra cancelados con monto a devolver y comisión', async () => {
-    sessionStorage.setItem('cc-admin-token', 'secreto');
+    localStorage.setItem('cc-admin-token', 'secreto');
     const cancelled = { ...adminOrder('CC-CCCC', 'cancelled'), refundCents: 50000, providerFeeCents: 2100 };
     vi.stubGlobal(
       'fetch',
@@ -363,7 +364,7 @@ describe('admin', () => {
   });
 
   it('un 409 muestra el mensaje y recarga la lista', async () => {
-    sessionStorage.setItem('cc-admin-token', 'secreto');
+    localStorage.setItem('cc-admin-token', 'secreto');
     const f = vi.fn(async (_url: string, init?: RequestInit) =>
       init?.method === 'PATCH'
         ? json(409, { error: 'internal', message: 'Alguien más cambió este pedido.' })
@@ -378,5 +379,71 @@ describe('admin', () => {
     );
     await waitFor(() => expect(f.mock.calls.filter(([, i]) => !i?.method).length).toBe(2));
     expect(screen.getByRole('alert').textContent).toBe('Alguien más cambió este pedido.');
+  });
+  /** Token de empleado como lo firma el servidor (la firma aquí no importa: la valida el servidor). */
+  const staffToken = (name: string, role: 'manager' | 'barista') => {
+    const utf8 = new TextEncoder().encode(JSON.stringify({ name, role, exp: '2099-01-01T00:00:00.000Z' }));
+    return `s.${btoa(String.fromCharCode(...utf8))}.firma`;
+  };
+
+  it('entra con nombre y PIN; un barista no ve confirmar pago ni cancelar', async () => {
+    const f = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url === '/api/staff')
+        return json(200, {
+          staff: [
+            { name: 'Sofía', role: 'barista' },
+            { name: 'Rudy', role: 'manager' },
+          ],
+        });
+      if (url === '/api/staff/login')
+        return JSON.parse(String(init?.body)).pin === '5678'
+          ? json(200, {
+              token: staffToken('Sofía', 'barista'),
+              name: 'Sofía',
+              role: 'barista',
+              expiresAt: '2099-01-01T00:00:00.000Z',
+            })
+          : json(401, { error: 'unauthorized' });
+      return json(200, { orders: [adminOrder('CC-AAAA', 'pending_payment'), adminOrder('CC-BBBB')] });
+    });
+    vi.stubGlobal('fetch', f);
+    render(<AdminPage settings={settings} />);
+    await waitFor(() => expect(screen.getByRole('option', { name: 'Sofía' })).toBeTruthy());
+    fireEvent.change(screen.getByLabelText('Nombre'), { target: { value: 'Sofía' } });
+    fireEvent.input(screen.getByLabelText('PIN'), { target: { value: '0000' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Entrar' }));
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('Nombre o PIN incorrecto.'));
+
+    fireEvent.input(screen.getByLabelText('PIN'), { target: { value: '5678' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Entrar' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Marcar listo' })).toBeTruthy());
+    expect(document.body.textContent).toContain('Sofía · barista');
+    expect(screen.queryByRole('button', { name: /Marcar pagado/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Cancelar' })).toBeNull();
+    expect(localStorage.getItem('cc-admin-token')).toBe(staffToken('Sofía', 'barista'));
+  });
+
+  it('toma la sesión de #sesion= (app interna) y la quita de la URL', async () => {
+    history.replaceState(null, '', `/admin#sesion=${staffToken('Rudy', 'manager')}`);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => json(200, { orders: [adminOrder('CC-AAAA', 'pending_payment')] })),
+    );
+    render(<AdminPage settings={settings} />);
+    await waitFor(() => expect(screen.getByRole('button', { name: /Marcar pagado/ })).toBeTruthy());
+    expect(screen.getByRole('button', { name: 'Cancelar' })).toBeTruthy();
+    expect(location.hash).toBe('');
+    expect(document.body.textContent).toContain('Rudy · gerente');
+  });
+
+  it('una sesión vencida pide entrar de nuevo', () => {
+    const expired = `s.${btoa(JSON.stringify({ name: 'Rudy', role: 'manager', exp: '2020-01-01T00:00:00.000Z' }))}.x`;
+    localStorage.setItem('cc-admin-token', expired);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => json(200, { staff: [] })),
+    );
+    render(<AdminPage settings={settings} />);
+    expect(screen.getByLabelText('PIN')).toBeTruthy();
   });
 });

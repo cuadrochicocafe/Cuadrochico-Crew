@@ -10,6 +10,8 @@ import type {
   CreateOrderResponse,
   OrderResponse,
   PrepResponse,
+  StaffListResponse,
+  StaffLoginResponse,
 } from '@cuadrochico/core';
 
 const ERROR_CODES: readonly ApiError['error'][] = [
@@ -20,6 +22,8 @@ const ERROR_CODES: readonly ApiError['error'][] = [
   'not_cancellable',
   'not_found',
   'unauthorized',
+  'forbidden',
+  'locked',
   'payment_provider',
   'internal',
 ];
@@ -63,6 +67,8 @@ export function apiErrorMessage(e: ApiError): string {
     case 'slot':
     case 'captcha':
     case 'not_cancellable':
+    case 'forbidden':
+    case 'locked':
     case 'payment_provider':
     case 'internal':
       return e.message;
@@ -138,4 +144,10 @@ export const adminApi = {
     }),
   prep: (token: string, date: string) =>
     request<PrepResponse>(`/api/admin/prep${q({ date })}`, { headers: bearer(token) }),
+};
+
+export const staffApi = {
+  list: () => request<StaffListResponse>('/api/staff'),
+  login: (name: string, pin: string) =>
+    request<StaffLoginResponse>('/api/staff/login', { method: 'POST', body: JSON.stringify({ name, pin }) }),
 };

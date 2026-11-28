@@ -7,17 +7,52 @@ import {
   localDate,
   type PrepResponse,
   type Settings,
+  type StaffListResponse,
+  type StaffRole,
 } from '@cuadrochico/core';
 import { useEffect, useState } from 'preact/hooks';
-import { ApiRequestError, adminApi, apiErrorMessage, toApiError } from '../api';
+import { ApiRequestError, adminApi, apiErrorMessage, staffApi, toApiError } from '../api';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { formatLocalDate, STATUS_LABEL } from '../lib';
 
 const TOKEN_KEY = 'cc-admin-token';
 
-function readToken(): string {
+export interface AdminSession {
+  token: string;
+  name: string;
+  role: StaffRole;
+}
+
+/**
+ * Datos de la sesión para la interfaz. El token de empleado es `s.<payload>.<firma>`: aquí solo se lee
+ * el payload (nombre, rol, vencimiento); quien valida la firma es el servidor. Otro token = ADMIN_TOKEN.
+ */
+export function sessionFrom(token: string, now = new Date()): AdminSession | null {
+  if (!token) return null;
+  if (!token.startsWith('s.')) return { token, name: 'admin', role: 'manager' };
   try {
-    return sessionStorage.getItem(TOKEN_KEY) ?? '';
+    const b64 = (token.split('.')[1] ?? '').replace(/-/g, '+').replace(/_/g, '/');
+    const p = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)))) as {
+      name: string;
+      role: StaffRole;
+      exp: string;
+    };
+    return p.exp > now.toISOString() ? { token, name: p.name, role: p.role } : null;
+  } catch {
+    return null;
+  }
+}
+
+/** La app interna abre `/admin#sesion=<token>` ya con sesión; si no, se usa la guardada en este dispositivo. */
+function readToken(): string {
+  const fromHash = new URLSearchParams(location.hash.slice(1)).get('sesion');
+  if (fromHash) {
+    history.replaceState(history.state, '', location.pathname + location.search);
+    saveToken(fromHash);
+    return fromHash;
+  }
+  try {
+    return localStorage.getItem(TOKEN_KEY) ?? '';
   } catch {
     return '';
   }
@@ -25,37 +60,41 @@ function readToken(): string {
 
 function saveToken(t: string) {
   try {
-    if (t) sessionStorage.setItem(TOKEN_KEY, t);
-    else sessionStorage.removeItem(TOKEN_KEY);
+    if (t) localStorage.setItem(TOKEN_KEY, t);
+    else localStorage.removeItem(TOKEN_KEY);
   } catch {
-    // Sin sessionStorage (modo privado): el token vive solo en memoria.
+    // Sin almacenamiento (modo privado o dentro de otra app): la sesión vive solo en memoria.
   }
 }
 
 /** `highlight`: código que llega en `/admin?pedido=CODE` (enlace del evento de Google Calendar). */
 export function AdminPage({ settings, highlight = null }: { settings: Settings; highlight?: string | null }) {
-  const [token, setToken] = useState(readToken);
+  const [session, setSession] = useState(() => sessionFrom(readToken()));
   const [tab, setTab] = useState<'orders' | 'prep'>('orders');
 
   const logout = () => {
     saveToken('');
-    setToken('');
+    setSession(null);
   };
 
-  if (!token)
+  if (!session)
     return (
       <Login
         onToken={(t) => {
           saveToken(t);
-          setToken(t);
+          setSession(sessionFrom(t));
         }}
       />
     );
 
+  const token = session.token;
   return (
     <div class="admin">
       <div class="admin-bar">
         <h2>Panel del equipo</h2>
+        <p class="muted small">
+          {session.name} · {session.role === 'manager' ? 'gerente' : 'barista'}
+        </p>
         <button type="button" class="btn small" onClick={logout}>
           Salir
         </button>
@@ -79,7 +118,13 @@ export function AdminPage({ settings, highlight = null }: { settings: Settings; 
         </button>
       </div>
       {tab === 'orders' ? (
-        <Orders token={token} settings={settings} highlight={highlight} onUnauthorized={logout} />
+        <Orders
+          token={token}
+          manager={session.role === 'manager'}
+          settings={settings}
+          highlight={highlight}
+          onUnauthorized={logout}
+        />
       ) : (
         <Prep token={token} settings={settings} onUnauthorized={logout} />
       )}
@@ -88,30 +133,103 @@ export function AdminPage({ settings, highlight = null }: { settings: Settings; 
 }
 
 function Login({ onToken }: { onToken: (t: string) => void }) {
-  const [value, setValue] = useState('');
+  const [staff, setStaff] = useState<StaffListResponse['staff'] | null>(null);
+  const [name, setName] = useState('');
+  const [pin, setPin] = useState('');
+  const [adminToken, setAdminToken] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    staffApi
+      .list()
+      .then((r) => setStaff(r.staff))
+      .catch(() => setStaff([]));
+  }, []);
+
+  const submit = async (e: Event) => {
+    e.preventDefault();
+    setError(null);
+    if (!name || !pin) {
+      setError('Elige tu nombre y escribe tu PIN.');
+      return;
+    }
+    setBusy(true);
+    try {
+      onToken((await staffApi.login(name, pin)).token);
+    } catch (err) {
+      const apiErr = toApiError(err);
+      setError(apiErr.error === 'unauthorized' ? 'Nombre o PIN incorrecto.' : apiErrorMessage(apiErr));
+      setPin('');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
-    <form
-      class="card"
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (value.trim()) onToken(value.trim());
-      }}
-    >
+    <div class="card">
       <h2>Panel del equipo</h2>
-      <div class="field">
-        <label for="admin-token">Token de acceso</label>
-        <input
-          id="admin-token"
-          type="password"
-          autoComplete="off"
-          value={value}
-          onInput={(e) => setValue((e.target as HTMLInputElement).value)}
-        />
-      </div>
-      <button type="submit" class="btn primary">
-        Entrar
-      </button>
-    </form>
+      <form onSubmit={submit}>
+        <div class="field">
+          <label for="staff-name">Nombre</label>
+          <select
+            id="staff-name"
+            value={name}
+            onChange={(e) => setName((e.target as HTMLSelectElement).value)}
+          >
+            <option value="">{staff === null ? 'Cargando…' : 'Elige tu nombre'}</option>
+            {staff?.map((s) => (
+              <option key={s.name} value={s.name}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div class="field">
+          <label for="staff-pin">PIN</label>
+          <input
+            id="staff-pin"
+            type="password"
+            inputMode="numeric"
+            autoComplete="off"
+            maxLength={8}
+            value={pin}
+            onInput={(e) => setPin((e.target as HTMLInputElement).value)}
+          />
+        </div>
+        {error && (
+          <p class="error" role="alert">
+            {error}
+          </p>
+        )}
+        <button type="submit" class="btn primary" disabled={busy}>
+          Entrar
+        </button>
+      </form>
+      <details class="small">
+        <summary>Entrar con el token de administrador</summary>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (adminToken.trim()) onToken(adminToken.trim());
+          }}
+        >
+          <div class="field">
+            <label for="admin-token">Token de acceso</label>
+            <input
+              id="admin-token"
+              type="password"
+              autoComplete="off"
+              value={adminToken}
+              onInput={(e) => setAdminToken((e.target as HTMLInputElement).value)}
+            />
+          </div>
+          <button type="submit" class="btn">
+            Entrar con token
+          </button>
+        </form>
+      </details>
+    </div>
   );
 }
 
@@ -121,7 +239,13 @@ interface TabProps {
   onUnauthorized: () => void;
 }
 
-function Orders({ token, settings, highlight, onUnauthorized }: TabProps & { highlight: string | null }) {
+function Orders({
+  token,
+  manager,
+  settings,
+  highlight,
+  onUnauthorized,
+}: TabProps & { highlight: string | null; manager: boolean }) {
   const today = localDate(new Date(), settings.timezone);
   // Con un pedido señalado se abre un rango amplio para que aparezca aunque sea de otra semana.
   const [from, setFrom] = useState(highlight ? addDays(today, -30) : today);
@@ -225,7 +349,13 @@ function Orders({ token, settings, highlight, onUnauthorized }: TabProps & { hig
                 class={o.code === highlight ? 'card highlight' : 'card'}
                 aria-current={o.code === highlight ? 'true' : undefined}
               >
-                <AdminOrderCard order={o} busy={busy} onUpdate={update} onCancel={() => setCancelling(o)} />
+                <AdminOrderCard
+                  order={o}
+                  manager={manager}
+                  busy={busy}
+                  onUpdate={update}
+                  onCancel={() => setCancelling(o)}
+                />
               </li>
             ))}
           </ul>
@@ -243,7 +373,10 @@ function Orders({ token, settings, highlight, onUnauthorized }: TabProps & { hig
           }}
           onClose={() => setCancelling(null)}
         >
-          <p>El pedido libera su horario. Si corresponde, el reembolso se hace a mano.</p>
+          <p>
+            El pedido libera su horario. Cancelar desde aquí no reembolsa solo: si corresponde, devuélvelo a
+            mano.
+          </p>
         </ConfirmDialog>
       )}
     </section>
@@ -261,11 +394,14 @@ function refundStatus(o: AdminOrder): string {
 
 function AdminOrderCard({
   order: o,
+  manager,
   busy,
   onUpdate,
   onCancel,
 }: {
   order: AdminOrder;
+  /** Un barista solo ve "Marcar listo" y "Marcar entregado". */
+  manager: boolean;
   busy: boolean;
   onUpdate: (code: string, body: AdminUpdateOrderRequest) => void;
   onCancel: () => void;
@@ -319,7 +455,7 @@ function AdminOrderCard({
         </dl>
       )}
       <div class="actions">
-        {o.status === 'pending_payment' && (
+        {manager && o.status === 'pending_payment' && (
           <button
             type="button"
             class="btn small"
@@ -349,7 +485,7 @@ function AdminOrderCard({
             Marcar entregado y liquidado
           </button>
         )}
-        {(o.status === 'pending_payment' || o.status === 'confirmed' || o.status === 'ready') && (
+        {manager && (o.status === 'pending_payment' || o.status === 'confirmed' || o.status === 'ready') && (
           <button type="button" class="btn small danger" disabled={busy} onClick={onCancel}>
             Cancelar
           </button>
