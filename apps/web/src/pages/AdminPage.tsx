@@ -387,7 +387,7 @@ function Orders({ token, manager, settings, highlight, onUnauthorized }: OrdersP
             >
               <Ico />
               {f.label}
-              <span class="s-count">{n}</span>
+              {orders && <span class="s-count">{n}</span>}
             </button>
           );
         })}
