@@ -188,6 +188,30 @@ describe('tienda', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   };
 
+  it('las pestañas de categoría bajan a su sección sin cambiar la URL ni el historial', () => {
+    const scrolled: string[] = [];
+    const proto = HTMLElement.prototype as unknown as { scrollIntoView?: unknown };
+    const original = proto.scrollIntoView;
+    proto.scrollIntoView = function (this: HTMLElement) {
+      scrolled.push(this.id);
+    };
+    try {
+      render(<ShopFlow menu={menu} settings={settings} />);
+      const nav = screen.getByRole('navigation', { name: 'Categorías' });
+      const [first, second] = within(nav).getAllByRole('button');
+      expect(first?.getAttribute('aria-current')).toBe('true');
+      const before = history.length;
+      if (second) fireEvent.click(second);
+      expect(scrolled).toEqual(['cat-especialidad']);
+      expect(second?.getAttribute('aria-current')).toBe('true');
+      expect(first?.getAttribute('aria-current')).toBeNull();
+      expect(location.hash).toBe('');
+      expect(history.length).toBe(before);
+    } finally {
+      proto.scrollIntoView = original;
+    }
+  });
+
   it('muestra el catálogo, agrega desde la hoja y el total aparece antes de pedir datos', async () => {
     render(<ShopFlow menu={menu} settings={settings} />);
     expect(screen.queryByRole('button', { name: /Ver pedido/ })).toBeNull();

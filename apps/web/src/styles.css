@@ -369,6 +369,8 @@ input[aria-invalid="true"] {
 
 .hero .hand {
   color: #f3c7a6;
+  /* La letra manuscrita se inclina sobre el espacio que sigue. */
+  padding-right: 0.12em;
 }
 
 .hero-facts {
@@ -416,15 +418,25 @@ input[aria-invalid="true"] {
   scrollbar-width: none;
 }
 
-.cat-tabs a {
+.cat-tabs button {
   flex: none;
+  min-height: 40px;
   padding: 0.45rem 0.95rem;
   border-radius: 999px;
   border: 1.5px solid var(--line-strong);
   background: var(--paper);
-  text-decoration: none;
-  font-weight: 600;
-  font-size: 0.92rem;
+  color: var(--blue);
+  font: 600 0.92rem var(--sans);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.cat-tabs button[aria-current="true"] {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: var(--cream);
 }
 
 .cat-section h3 {
@@ -1090,6 +1102,7 @@ input[aria-invalid="true"] {
   font-weight: 400;
 }
 
+.cal-day.off,
 .cal-day.out {
   color: var(--muted);
   opacity: 0.45;
@@ -1637,6 +1650,15 @@ html.staff a {
 html.embedded .s-chips {
   margin-inline: 0;
   padding-inline: 0;
+}
+
+@media (min-width: 640px) {
+  .s-chips {
+    flex-wrap: wrap;
+    overflow: visible;
+    margin-inline: 0;
+    padding-inline: 0;
+  }
 }
 
 .s-chip {

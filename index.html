@@ -984,7 +984,7 @@ function vistaHome(){
   if (!GAS && (!S.sinc || Date.now() - S.sinc > 60000)) { S.sinc = Date.now(); Buzon.sincronizar().then(() => { subeConteosLocales(); if (!S.modulo) pintaBadges(); }); }
   return '<h2 class="hola">Hola, ' + esc(S.user) + '</h2><div class="mut">¿Qué vas a hacer?</div><div class="mods">' +
     mods.map(m => '<button class="mod" data-modulo="' + m.id + '">' + m.i + '<span><span class="t">' + m.t + '</span><small>' + m.s + '</small><span class="bdg" id="bdg-' + m.id + '"></span></span></button>').join('') +
-    '<button class="mod" data-modulo="pedidos">' + ICONO_PED + '<span><span class="t">Pedidos de mayoreo</span><small>Pedidos de clientes, pagos y producción del día</small></span></button></div>';
+    '<button class="mod" data-modulo="pedidos">' + ICONO_PED + '<span><span class="t">Pedidos de mayoreo</span><small>Pedidos de clientes, pagos y entregas</small></span></button></div>';
 }
 function irA(m){
   aplicaCatPend(false);

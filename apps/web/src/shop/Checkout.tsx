@@ -209,16 +209,22 @@ export function Checkout(props: Props) {
           <>
             <fieldset class="bare" aria-describedby="lead-time date-reasons">
               <legend class="sr-only">Fecha</legend>
-              <DateCalendar days={days} picked={pickedDate} onPick={pickDate} />
-              <ul id="date-reasons" class="reasons">
-                {reasons(
-                  days.map((d) => d.problem),
-                  settings,
-                  drinks,
-                ).map((r) => (
-                  <li key={r}>Días sin elegir: {r}</li>
-                ))}
-              </ul>
+              <DateCalendar
+                days={days}
+                picked={pickedDate}
+                onPick={pickDate}
+                note={(visible) => (
+                  <ul id="date-reasons" class="reasons">
+                    {reasons(
+                      visible.map((d) => d.problem),
+                      settings,
+                      drinks,
+                    ).map((r) => (
+                      <li key={r}>Días sin elegir: {r}</li>
+                    ))}
+                  </ul>
+                )}
+              />
             </fieldset>
             {day && (
               <fieldset class="bare" aria-describedby="time-reasons">
