@@ -49,8 +49,8 @@ describe('nextTierFor', () => {
 });
 
 describe('quote', () => {
-  it('cotiza 6 cold brew negros con 5 % y anticipo del 50 %', () => {
-    const r = quote([line('cold-brew', 6, 'negro')], ctx);
+  it('cotiza 6 cold brew con 5 % y anticipo del 50 %', () => {
+    const r = quote([line('cold-brew', 6)], ctx);
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     const q = r.value;
@@ -73,9 +73,15 @@ describe('quote', () => {
     expect(r.value.discountPercent).toBe(10);
   });
 
-  it('el cold brew latte acepta leche; el negro no', () => {
-    expect(quote([line('cold-brew', 6, 'latte', { leche: 'avena' })], ctx).ok).toBe(true);
-    const r = quote([line('cold-brew', 6, 'negro', { leche: 'avena' })], ctx);
+  it('el cold brew latte lleva leche y jarabe; el cold brew solo se endulza', () => {
+    const latte = quote(
+      [line('cold-brew-latte', 6, 'regular', { leche: 'avena', jarabe: 'miel-de-agave' })],
+      ctx,
+    );
+    expect(latte.ok && latte.value.lines[0]?.unitPriceCents).toBe(7800 + 500);
+    const dulce = quote([line('cold-brew', 6, 'regular', { jarabe: 'vainilla' })], ctx);
+    expect(dulce.ok && dulce.value.lines[0]?.unitPriceCents).toBe(7500 + 500);
+    const r = quote([line('cold-brew', 6, 'regular', { leche: 'avena' })], ctx);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.errors[0]).toMatchObject({ code: 'unexpected_option', groupId: 'leche' });
   });
@@ -124,7 +130,7 @@ describe('quote', () => {
 });
 
 describe('chargeFor', () => {
-  const r = quote([line('cold-brew', 6, 'negro')], ctx);
+  const r = quote([line('cold-brew', 6)], ctx);
   if (!r.ok) throw new Error('cotización inválida');
   it('anticipo: cobra el 50 % ahora y el resto al recoger', () => {
     expect(chargeFor(r.value, 'deposit')).toEqual({ dueNowCents: 21400, balanceCents: 21300 });
@@ -137,7 +143,7 @@ describe('chargeFor', () => {
       customer: { name: 'Ana López', phone: '81 1234 5678' },
       fulfillment: { type: 'pickup' },
       slot: { date: '2026-12-04', time: '12:00' },
-      lines: [line('cold-brew', 6, 'negro')],
+      lines: [line('cold-brew', 6)],
       paymentMethod: 'transfer',
     };
     expect(OrderInputSchema.safeParse(base).success).toBe(false);

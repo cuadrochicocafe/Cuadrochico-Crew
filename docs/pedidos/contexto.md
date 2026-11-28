@@ -25,10 +25,10 @@ Sin investigación directa con clientes todavía **[SUPUESTO]**. Antes de invert
 
 ## 3. Producto y oferta
 
-- **Menú de mayoreo:** Cinnamon Banana Latte, Matcha Latte, Chai Latte, Cold Brew (negro o latte), Cold Brew Jamaica, Cold Brew Tonic y Cold Brew Lemonade.
+- **Menú de mayoreo:** Cinnamon Banana Latte, Matcha Latte, Chai Latte, Cold Brew, Cold Brew Latte, Cold Brew Jamaica, Cold Brew Tonic y Cold Brew Lemonade.
   - Todas se sirven **frías** y se pueden preparar con anticipación. El espresso queda fuera porque no aguanta 48 h.
 - **Leches:** entera, deslactosada, almendra o avena, sin costo extra (confirmado por el dueño). Aplican al Cinnamon Banana Latte, al Matcha, al Chai y al Cold Brew Latte.
-- **Jarabes (+$5):** moka, vainilla, canela, plátano, caramelo, miel de abeja y miel de agave. Aplican al Matcha, al Chai y al Cold Brew.
+- **Jarabes (+$5):** moka, vainilla, canela, plátano, caramelo, miel de abeja y miel de agave. Aplican al Matcha, al Chai, al Cold Brew Latte y al Cold Brew (que solo se puede endulzar, sin leche).
 - **Temporada:** se agregan bebidas con fechas de inicio y fin.
 - **Descuentos por número de bebidas:**
   - 6 a 11 → 5 %

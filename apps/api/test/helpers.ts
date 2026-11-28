@@ -37,7 +37,12 @@ export function orderInput(over: Partial<CreateOrderRequest> = {}): CreateOrderR
     fulfillment: { type: 'pickup' },
     slot: slotBetween(240, 320),
     lines: [
-      { itemId: 'cold-brew', variantId: 'latte', options: { leche: 'avena', jarabe: 'vainilla' }, qty: 6 },
+      {
+        itemId: 'cold-brew-latte',
+        variantId: 'regular',
+        options: { leche: 'avena', jarabe: 'vainilla' },
+        qty: 6,
+      },
       { itemId: 'matcha-latte', variantId: 'regular', qty: 6 },
     ],
     paymentMethod: 'transfer',
