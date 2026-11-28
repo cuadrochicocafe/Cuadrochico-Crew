@@ -1,5 +1,6 @@
 /admin
   X-Robots-Tag: noindex, nofollow
+  Content-Security-Policy: frame-ancestors 'self' https://cuadrochicocafe.github.io
 /pedido/*
   X-Robots-Tag: noindex, nofollow
   Referrer-Policy: no-referrer

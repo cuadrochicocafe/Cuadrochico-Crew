@@ -17,14 +17,16 @@ import {
   type OrderResponse,
   type OrderStatus,
   type PaymentInstructions,
-  type PrepResponse,
   quote,
   quoteErrorMessage,
   type Settings,
+  type StaffListResponse,
+  type StaffLoginResponse,
   slotProblemMessage,
   toPublicSettings,
 } from '@cuadrochico/core';
 import { type Context, Hono } from 'hono';
+import { cors } from 'hono/cors';
 import { z } from 'zod';
 import { bookingsBetween, insertOrder, transition } from './db';
 import { onOrderCreated, onPaymentUpdated, onStatusChanged } from './effects';
@@ -32,11 +34,12 @@ import { type AppEnv, type Env, settingsFor } from './env';
 import { createPreference, feeCents, getPayment, toCents, verifySignature } from './mercadopago';
 import { type EventRow, getOrder, logEvent, type OrderRow, toAdminOrder, toPublicOrder } from './orders';
 import { newAccessToken, newOrderCode, safeEqual, sha256Hex } from './security';
+import { actorFor, login, publicStaff } from './staff';
 import { verifyTurnstile } from './turnstile';
 
 type C = Context<AppEnv>;
 
-const fail = (c: C, status: 400 | 401 | 404 | 409 | 422 | 502 | 503 | 500, body: ApiError) =>
+const fail = (c: C, status: 400 | 401 | 403 | 404 | 409 | 422 | 429 | 502 | 503 | 500, body: ApiError) =>
   c.json(body, status);
 
 const zodIssues = (error: z.ZodError) =>
@@ -355,13 +358,49 @@ app.post('/api/webhooks/mercadopago', async (c) => {
 
 // ---------- Administración
 
+// ---------- Equipo: login con PIN
+
+/** La app interna del equipo (GitHub Pages) inicia sesión aquí; nadie más puede llamar desde el navegador. */
+export const TEAM_APP_ORIGIN = 'https://cuadrochicocafe.github.io';
+app.use('/api/staff/*', cors({ origin: TEAM_APP_ORIGIN, allowMethods: ['GET', 'POST'] }));
+app.use('/api/staff', cors({ origin: TEAM_APP_ORIGIN, allowMethods: ['GET'] }));
+
+app.get('/api/staff', (c) => {
+  const body: StaffListResponse = { staff: publicStaff(c.env) };
+  return c.json(body);
+});
+
+const StaffLoginSchema = z.object({
+  name: z.string().min(1).max(60),
+  pin: z.string().regex(/^\d{4,8}$/, 'El PIN son de 4 a 8 números.'),
+});
+
+app.post('/api/staff/login', async (c) => {
+  const parsed = StaffLoginSchema.safeParse(await c.req.json().catch(() => undefined));
+  if (!parsed.success) return fail(c, 400, { error: 'validation', issues: zodIssues(parsed.error) });
+  const r = await login(c.env, parsed.data.name, parsed.data.pin);
+  if (r.ok) {
+    const body: StaffLoginResponse = { token: r.token, ...r.actor, expiresAt: r.expiresAt };
+    return c.json(body);
+  }
+  if (r.reason === 'locked')
+    return fail(c, 429, {
+      error: 'locked',
+      message: 'Demasiados intentos con este nombre. Espera 15 minutos o pide ayuda a un gerente.',
+    });
+  return fail(c, 401, { error: 'unauthorized' });
+});
+
 app.use('/api/admin/*', async (c, next) => {
-  const expected = c.env.ADMIN_TOKEN;
   const header = c.req.header('authorization') ?? '';
-  const given = header.startsWith('Bearer ') ? header.slice(7) : '';
-  if (!expected || !given || !safeEqual(given, expected)) return fail(c, 401, { error: 'unauthorized' });
+  const actor = await actorFor(c.env, header.startsWith('Bearer ') ? header.slice(7) : '');
+  if (!actor) return fail(c, 401, { error: 'unauthorized' });
+  c.set('actor', actor);
   await next();
 });
+
+/** Lo que un barista puede marcar; todo lo demás es de gerente. */
+const BARISTA_STATUSES: readonly OrderStatus[] = ['ready', 'completed'];
 
 const STATUSES = ['pending_payment', 'confirmed', 'ready', 'completed', 'cancelled', 'expired'] as const;
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'fecha AAAA-MM-DD');
@@ -435,6 +474,16 @@ app.patch('/api/admin/orders/:code', async (c) => {
   if (!row) return fail(c, 404, { error: 'not_found' });
   const settings = settingsFor(env);
   const { status, paidCents, note } = parsed.data;
+  const actor = c.get('actor');
+  // Un barista solo marca listo o entregado; al entregar puede registrar el saldo cobrado (el total exacto).
+  const baristaOk =
+    (status === undefined || BARISTA_STATUSES.includes(status)) &&
+    (paidCents === undefined || (status === 'completed' && paidCents === row.total_cents));
+  if (actor.role !== 'manager' && !baristaOk)
+    return fail(c, 403, {
+      error: 'forbidden',
+      message: 'Solo un gerente puede cambiar pagos, confirmar o cancelar pedidos.',
+    });
 
   let current = row;
   if (status !== undefined || paidCents !== undefined) {
@@ -451,7 +500,7 @@ app.patch('/api/admin/orders/:code', async (c) => {
     if (changes.length) {
       const updated = await transition(env.DB, code, row.status, set, {
         type: set.status ? 'status' : 'payment',
-        detail: `${changes.join('; ')} (admin)`,
+        detail: `${changes.join('; ')} (${actor.name})`,
       });
       if (!updated)
         return fail(c, 409, {
@@ -464,38 +513,10 @@ app.patch('/api/admin/orders/:code', async (c) => {
         background(c, onPaymentUpdated(env, current, row.paid_cents, settings));
     }
   }
-  if (note) await logEvent(env.DB, code, 'note', note);
+  if (note) await logEvent(env.DB, code, 'note', `${note} (${actor.name})`);
 
   const events = await eventsFor(env.DB, [code]);
   return c.json({ order: toAdminOrder(current, events.get(code) ?? [], settings) });
-});
-
-/** Estados que se preparan: ya pagados (o listos / entregados ese día). */
-const PREP_STATUSES: readonly OrderStatus[] = ['confirmed', 'ready', 'completed'];
-
-app.get('/api/admin/prep', async (c) => {
-  const parsed = z.object({ date: isoDate }).safeParse(c.req.query());
-  if (!parsed.success) return fail(c, 400, { error: 'validation', issues: zodIssues(parsed.error) });
-  const { date } = parsed.data;
-  const inStatuses = PREP_STATUSES.map(() => '?').join(', ');
-  const [totals, orders] = await c.env.DB.batch<Record<string, unknown>>([
-    c.env.DB.prepare(
-      `SELECT i.name AS name, i.variant_label AS variantLabel, i.options_label AS options, SUM(i.qty) AS qty
-       FROM order_items i JOIN orders o ON o.code = i.order_code
-       WHERE o.slot_date = ? AND o.status IN (${inStatuses})
-       GROUP BY i.name, i.variant_label, i.options_label ORDER BY i.name, i.variant_label, qty DESC`,
-    ).bind(date, ...PREP_STATUSES),
-    c.env.DB.prepare(
-      `SELECT code, slot_time AS time, customer_name AS customerName, status, drinks FROM orders
-       WHERE slot_date = ? AND status IN (${inStatuses}) ORDER BY slot_time, created_at`,
-    ).bind(date, ...PREP_STATUSES),
-  ]);
-  const body: PrepResponse = {
-    date,
-    totals: (totals?.results ?? []) as PrepResponse['totals'],
-    orders: (orders?.results ?? []) as PrepResponse['orders'],
-  };
-  return c.json(body);
 });
 
 app.all('/api/*', (c) => fail(c, 404, { error: 'not_found' }));

@@ -35,7 +35,7 @@ describe('cliente de la API', () => {
     await api.cancelOrder('CC-7K3Q', 'a b');
     expect((f.mock.calls[0] as unknown as [string])[0]).toBe('/api/orders/CC-7K3Q/cancel?t=a+b');
     expect((f.mock.calls[0] as unknown as [string, RequestInit])[1].method).toBe('POST');
-    await adminApi.prep('secreto', '2026-12-10');
+    await adminApi.orders('secreto', '2026-12-10', '2026-12-20');
     const init = (f.mock.calls[1] as unknown as [string, RequestInit])[1];
     expect((init.headers as Record<string, string>).Authorization).toBe('Bearer secreto');
   });

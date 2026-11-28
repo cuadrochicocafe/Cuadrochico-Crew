@@ -1,4 +1,5 @@
 import { defaultSettings, type Settings } from '@cuadrochico/core';
+import type { Actor } from './staff';
 
 /** Bindings y secretos del Worker. Todos los secretos son opcionales: si faltan, su función se desactiva. */
 export interface Env {
@@ -6,6 +7,8 @@ export interface Env {
   /** Archivos de apps/web/dist. No existe en pruebas ni si no se compiló la web. */
   ASSETS?: Fetcher;
   ADMIN_TOKEN?: string;
+  /** Huellas PBKDF2 de los PINs del equipo (JSON). Ver src/staff.ts. */
+  STAFF_PINS?: string;
   MP_ACCESS_TOKEN?: string;
   MP_WEBHOOK_SECRET?: string;
   TRANSFER_BANK?: string;
@@ -18,7 +21,7 @@ export interface Env {
   GOOGLE_CALENDAR_ID?: string;
 }
 
-export type AppEnv = { Bindings: Env };
+export type AppEnv = { Bindings: Env; Variables: { actor: Actor } };
 
 /**
  * Configuración efectiva: la de core más los secretos. Los datos bancarios de settings.json son

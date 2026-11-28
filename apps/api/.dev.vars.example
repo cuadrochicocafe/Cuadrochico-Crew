@@ -4,6 +4,8 @@
 
 # Administración (Authorization: Bearer <ADMIN_TOKEN>). Usa un valor largo y aleatorio.
 ADMIN_TOKEN=cambia-esto-por-un-token-largo-y-aleatorio
+# PINs del equipo: en producción se cargan con `node scripts/staff-pins.mjs` (ver README).
+# STAFF_PINS=[]
 
 # Mercado Pago Checkout Pro. Si falta alguno, Mercado Pago aparece desactivado en /api/catalog.
 MP_ACCESS_TOKEN=TEST-0000000000000000-000000-00000000000000000000000000000000-000000000

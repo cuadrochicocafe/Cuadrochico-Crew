@@ -77,10 +77,33 @@ async function serviceAccount() {
 
 const sa = await serviceAccount();
 
+/** PINs de prueba (pocas iteraciones para que las pruebas sean rápidas). */
+export const STAFF = { manager: { name: 'Rudy', pin: '1234' }, barista: { name: 'Sofía', pin: '5678' } };
+
+async function staffEntry(n: string, r: string, pin: string) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, [
+    'deriveBits',
+  ]);
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', hash: 'SHA-256', salt, iterations: 1000 },
+    key,
+    256,
+  );
+  const b64 = (b: Uint8Array) => btoa(String.fromCharCode(...b));
+  return { n, r, s: b64(salt), h: b64(new Uint8Array(bits)), i: 1000 };
+}
+
+const staffPins = JSON.stringify([
+  await staffEntry(STAFF.manager.name, 'Gerente', STAFF.manager.pin),
+  await staffEntry(STAFF.barista.name, 'Barista', STAFF.barista.pin),
+]);
+
 export function testEnv(over: Partial<Env> = {}): Env {
   return {
     ...env,
     ADMIN_TOKEN,
+    STAFF_PINS: staffPins,
     MP_ACCESS_TOKEN: 'TEST-mp-token',
     MP_WEBHOOK_SECRET,
     TRANSFER_BANK: 'Banco Prueba',
