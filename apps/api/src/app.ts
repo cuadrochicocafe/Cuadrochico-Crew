@@ -28,6 +28,7 @@ import {
 import { type Context, Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { z } from 'zod';
+import { alertError } from './alerts';
 import { bookingsBetween, insertOrder, transition } from './db';
 import { onOrderCreated, onPaymentUpdated, onStatusChanged } from './effects';
 import { type AppEnv, type Env, settingsFor } from './env';
@@ -95,6 +96,8 @@ export const app = new Hono<AppEnv>();
 
 app.onError((err, c) => {
   console.error(err);
+  // Avisa al equipo por ruta (no por URL completa): /api/orders/:code agrupa todos los pedidos.
+  background(c, alertError(c.env, `${c.req.method} ${c.req.routePath}`, err));
   return fail(c, 500, { error: 'internal', message: 'Ocurrió un error inesperado. Intenta de nuevo.' });
 });
 

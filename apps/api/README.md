@@ -33,6 +33,12 @@ Mercado Pago, Telegram, Turnstile, Google OAuth y Google Calendar.
 
 ## Despliegue
 
+Al unir a `main`, GitHub Actions corre `pnpm check` y publica solo (`.github/workflows/ci.yml`), si el repo
+tiene los secretos `CLOUDFLARE_API_TOKEN` y `CLOUDFLARE_ACCOUNT_ID`. Activación, anti-bots, Telegram,
+respaldos y el día a día: `docs/pedidos/operacion.md`.
+
+Primera vez o a mano:
+
 1. `pnpm exec wrangler d1 create cuadrochico-pedidos` (desde `apps/api`) y copia el `database_id` a `wrangler.jsonc`.
 2. Carga cada secreto de `.dev.vars.example`: `pnpm exec wrangler secret put NOMBRE`.
 3. `pnpm deploy` desde la raíz (compila la web, aplica migraciones remotas y publica el Worker).
