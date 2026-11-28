@@ -1,6 +1,6 @@
 import type { OrderStatus } from './api';
 import { zonedToUtc } from './schedule';
-import type { PaymentMethod, Settings } from './schema';
+import type { Settings } from './schema';
 
 const HOUR_MS = 3600_000;
 
@@ -47,16 +47,11 @@ export function cancelProblem(
 }
 
 /**
- * Monto a devolver al cancelar a tiempo. La transferencia se devuelve completa;
- * de Mercado Pago se descuenta la comisión real que cobró (`fee_details` del pago).
+ * Monto a devolver al cancelar a tiempo: todo lo pagado, con cualquier método.
+ * La transferencia la devuelve el equipo a mano; Mercado Pago la devuelve sola por su API.
  */
-export function refundFor(p: {
-  paidCents: number;
-  paymentMethod: PaymentMethod;
-  providerFeeCents: number;
-}): number {
-  if (p.paymentMethod === 'transfer') return p.paidCents;
-  return Math.max(0, p.paidCents - p.providerFeeCents);
+export function refundFor(p: { paidCents: number }): number {
+  return p.paidCents;
 }
 
 /** Texto único de la política: se muestra igual antes de pagar y en la página del pedido. */
@@ -64,7 +59,7 @@ export function cancellationPolicyText(settings: Settings): string {
   const h = settings.cancellationHours;
   return [
     `Puedes cancelar tu pedido hasta ${h} horas antes de la hora de entrega, desde la página de tu pedido.`,
-    'Si cancelas a tiempo, te devolvemos todo lo que pagaste: las transferencias se devuelven completas y los pagos con Mercado Pago se devuelven menos la comisión que cobra Mercado Pago.',
+    'Si cancelas a tiempo, te devolvemos todo lo que pagaste: los pagos con Mercado Pago se reembolsan automáticamente al mismo medio de pago y las transferencias te las devolvemos por transferencia.',
     `Los pedidos hechos con menos de ${h} horas de anticipación no se pueden cancelar ni reembolsar.`,
   ].join(' ');
 }

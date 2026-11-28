@@ -61,14 +61,9 @@ describe('cancelProblem', () => {
 });
 
 describe('refundFor', () => {
-  it('la transferencia se devuelve completa', () => {
-    expect(refundFor({ paidCents: 21400, paymentMethod: 'transfer', providerFeeCents: 0 })).toBe(21400);
-    expect(refundFor({ paidCents: 21400, paymentMethod: 'transfer', providerFeeCents: 999 })).toBe(21400);
-  });
-
-  it('Mercado Pago se devuelve menos su comisión real', () => {
-    expect(refundFor({ paidCents: 42700, paymentMethod: 'mercadopago', providerFeeCents: 2193 })).toBe(40507);
-    expect(refundFor({ paidCents: 100, paymentMethod: 'mercadopago', providerFeeCents: 500 })).toBe(0);
+  it('se devuelve todo lo pagado, sin descontar comisiones', () => {
+    expect(refundFor({ paidCents: 21400 })).toBe(21400);
+    expect(refundFor({ paidCents: 42700 })).toBe(42700);
   });
 });
 
@@ -76,8 +71,9 @@ describe('cancellationPolicyText', () => {
   it('describe plazo, reembolso por método y pedidos no reembolsables en un solo texto', () => {
     const text = cancellationPolicyText(settings);
     expect(text).toContain('hasta 72 horas antes');
-    expect(text).toContain('transferencias se devuelven completas');
-    expect(text).toContain('menos la comisión que cobra Mercado Pago');
+    expect(text).toContain('te devolvemos todo lo que pagaste');
+    expect(text).toContain('Mercado Pago se reembolsan automáticamente');
+    expect(text).not.toContain('comisión');
     expect(text).toContain('menos de 72 horas de anticipación no se pueden cancelar ni reembolsar');
     expect(NON_REFUNDABLE_NOTICE).toBe('Este pedido no se puede cancelar ni reembolsar.');
   });

@@ -301,7 +301,7 @@ describe('página del pedido', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancelar pedido' }));
     const dialog = screen.getByRole('dialog');
     expect(dialog.getAttribute('aria-modal')).toBe('true');
-    expect(dialog.textContent).toContain('a mano');
+    expect(dialog.textContent).toContain('el reembolso es automático');
     expect(dialog.textContent).toContain('Puedes cancelar hasta');
     expect(document.activeElement?.textContent).toBe('No, conservarlo');
     fireEvent.click(screen.getByRole('button', { name: 'Sí, cancelar pedido' }));
@@ -359,6 +359,7 @@ describe('admin', () => {
     await waitFor(() => expect(screen.getByText('Monto a devolver')).toBeTruthy());
     expect(document.body.textContent).toContain('$500');
     expect(document.body.textContent).toContain('$21');
+    expect(document.body.textContent).toContain('Devolver a mano');
   });
 
   it('un 409 muestra el mensaje y recarga la lista', async () => {

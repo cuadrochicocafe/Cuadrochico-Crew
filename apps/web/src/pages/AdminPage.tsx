@@ -250,6 +250,15 @@ function Orders({ token, settings, highlight, onUnauthorized }: TabProps & { hig
   );
 }
 
+/** Mercado Pago se reembolsa solo al cancelar; la transferencia, o un reembolso que falló, se devuelve a mano. */
+function refundStatus(o: AdminOrder): string {
+  const types = o.events.map((e) => e.type);
+  if (types.includes('mp_refund')) return 'Reembolsado automáticamente por Mercado Pago';
+  if (types.includes('mp_refund_error'))
+    return 'Falló el reembolso automático: devolver a mano desde Mercado Pago';
+  return o.paymentMethod === 'transfer' ? 'Devolver a mano por transferencia' : 'Devolver a mano';
+}
+
 function AdminOrderCard({
   order: o,
   busy,
@@ -297,6 +306,12 @@ function AdminOrderCard({
             <dt>Monto a devolver</dt>
             <dd>{o.refundCents === null ? 'No aplica' : formatMXN(o.refundCents)}</dd>
           </div>
+          {o.refundCents !== null && (
+            <div>
+              <dt>Reembolso</dt>
+              <dd>{refundStatus(o)}</dd>
+            </div>
+          )}
           <div>
             <dt>Comisión de Mercado Pago</dt>
             <dd>{o.providerFeeCents === null ? 'Aún no se sabe' : formatMXN(o.providerFeeCents)}</dd>
