@@ -357,10 +357,47 @@ describe('admin', () => {
       vi.fn(async () => json(200, { orders: [cancelled] })),
     );
     render(<AdminPage settings={settings} />);
+    // Por omisión se ven los pendientes; los cancelados están en su filtro.
+    await waitFor(() => expect(screen.getByRole('button', { name: /Cancelados/ })).toBeTruthy());
+    expect(screen.queryByText('Monto a devolver')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Cancelados/ }));
     await waitFor(() => expect(screen.getByText('Monto a devolver')).toBeTruthy());
     expect(document.body.textContent).toContain('$500');
     expect(document.body.textContent).toContain('$21');
     expect(document.body.textContent).toContain('Devolver a mano');
+  });
+
+  it('filtra por estado con conteos y marca en color lo que falta pagar', async () => {
+    localStorage.setItem('cc-admin-token', 'secreto');
+    const unpaid = { ...adminOrder('CC-AAAA', 'pending_payment'), paidCents: 0 };
+    const partial = adminOrder('CC-BBBB', 'confirmed');
+    const done = { ...adminOrder('CC-CCCC', 'completed'), paidCents: partial.quote.totalCents };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => json(200, { orders: [unpaid, partial, done] })),
+    );
+    render(<AdminPage settings={settings} />);
+    await waitFor(() => expect(document.getElementById('order-CC-AAAA')).toBeTruthy());
+
+    const chip = (name: RegExp) => screen.getByRole('button', { name });
+    expect(chip(/Pendientes/).textContent).toContain('2');
+    expect(chip(/Falta pagar/).textContent).toContain('2');
+    expect(chip(/Entregados/).textContent).toContain('1');
+    expect(chip(/Pendientes/).getAttribute('aria-pressed')).toBe('true');
+    expect(document.getElementById('order-CC-CCCC')).toBeNull();
+
+    const a = document.getElementById('order-CC-AAAA');
+    expect(a?.querySelector('.s-order')?.className).toContain('st-pending_payment');
+    expect(a?.querySelector('.s-pay')?.className).toContain('none');
+    expect(a?.textContent).toContain('Sin pago · anticipo de');
+    const b = document.getElementById('order-CC-BBBB');
+    expect(b?.querySelector('.s-pay')?.className).toContain('partial');
+    expect(b?.textContent).toMatch(/Pagó \$[\d,]+ · falta \$[\d,]+/);
+
+    fireEvent.click(chip(/Entregados/));
+    await waitFor(() => expect(document.getElementById('order-CC-CCCC')).toBeTruthy());
+    expect(document.getElementById('order-CC-AAAA')).toBeNull();
+    expect(document.getElementById('order-CC-CCCC')?.textContent).toContain('Pagado completo');
   });
 
   it('un 409 muestra el mensaje y recarga la lista', async () => {
